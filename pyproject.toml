@@ -5,23 +5,41 @@ build-backend = "hatchling.build"
 [project]
 name = "fei-assistant"
 version = "0.1.0"
-description = "A small LangGraph multi-agent assistant"
+description = "A modular LangGraph multi-agent assistant"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "alembic>=1.13,<2.0",
+  "apscheduler>=3.10,<4.0",
+  "boto3>=1.35,<2.0",
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.27,<1.0",
+  "keyring>=25,<26",
   "langchain>=1.0,<2.0",
   "langchain-openai>=1.0,<2.0",
   "langgraph>=1.0,<2.0",
+  "langgraph-checkpoint-postgres>=3.0,<4.0",
+  "oss2>=2.19,<3.0",
+  "psycopg[binary]>=3.2,<4.0",
+  "pydantic-settings>=2.6,<3.0",
+  "pypdf>=5,<7",
+  "python-docx>=1.1,<2.0",
   "python-dotenv>=1.0,<2.0",
+  "python-multipart>=0.0.12,<1.0",
+  "sqlalchemy>=2.0,<3.0",
+  "uvicorn[standard]>=0.32,<1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "langgraph-cli[inmem]>=0.4",
   "pytest>=8,<10",
+  "pytest-asyncio>=0.24,<1.0",
 ]
 
 [project.scripts]
 fei-assistant = "fei_assistant.cli:main"
+fei-api = "fei_assistant.api.app:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fei_assistant"]

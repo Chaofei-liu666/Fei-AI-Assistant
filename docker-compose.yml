@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fei
+      POSTGRES_USER: fei
+      POSTGRES_PASSWORD: fei-local
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - fei-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fei -d fei"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: fei-local
+      MINIO_ROOT_PASSWORD: change-me-local-only
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - fei-minio:/data
+volumes:
+  fei-postgres:
+  fei-minio:

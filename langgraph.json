@@ -1,0 +1,9 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "fei-assistant": "./src/fei_assistant/server.py:graph",
+    "fei-job-search": "./src/fei_assistant/server.py:job_search_graph"
+  },
+  "env": ".env"
+}

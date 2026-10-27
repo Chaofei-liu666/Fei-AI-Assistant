@@ -3,30 +3,29 @@ from typing import Any
 from .contracts import Route
 
 
-COMPLEX_TASK_MARKERS = (
-    "分析",
-    "调研",
-    "比较",
-    "规划",
-    "执行",
-    "代码",
-    "编程",
-    "bug",
-    "测试",
-    "文件",
-    "数据",
-    "csv",
-    "excel",
-    "报告",
-    "多个",
-    "步骤",
-    "research",
-    "analyze",
-    "compare",
-    "code",
-    "debug",
-    "data",
-    "report",
+JOB_TASK_MARKERS = (
+    "岗位",
+    "职位",
+    "招聘",
+    "jd",
+    "简历",
+    "经历",
+    "项目描述",
+    "自我介绍",
+    "面试",
+    "模拟",
+    "复盘",
+    "薪资",
+    "offer",
+    "求职",
+    "投递",
+    "拒信",
+    "招聘邮件",
+    "resume",
+    "job description",
+    "interview",
+    "career",
+    "salary",
 )
 
 
@@ -38,10 +37,17 @@ def latest_user_text(messages: list[Any]) -> str:
 
 
 def classify_route(text: str) -> Route:
+    """Conservative fallback used only when structured model routing fails."""
     normalized = text.strip().lower()
-    if len(normalized) >= 80:
-        return "supervisor"
-    if any(marker in normalized for marker in COMPLEX_TASK_MARKERS):
-        return "supervisor"
-    return "direct"
+    if any(marker in normalized for marker in JOB_TASK_MARKERS):
+        return "job_search"
+    return "general"
+
+
+def route_for_explicit_module(module: str | None) -> Route | None:
+    if module == "job_search":
+        return "job_search"
+    if module == "general":
+        return "general"
+    return None
 
