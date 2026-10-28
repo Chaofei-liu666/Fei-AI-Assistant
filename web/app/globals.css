@@ -808,3 +808,26 @@ progress { width: 100%; height: 4px; accent-color: var(--accent); }
   height: 10px;
   background: var(--line2);
 }
+
+/* composer bar: meta left, model + send right (DeepSeek-like) */
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.composer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-bar .permission-chip {
+  margin-right: 0;
+}
+
+.composer-bar .composer-controls {
+  margin-right: 0;
+}

@@ -58,13 +58,19 @@ function TodayDigest({ onNavigate }: { onNavigate?: (target: string) => void }) 
 
 function ChatComposer({ isJob }: { isJob: boolean }) {
   return <ComposerPrimitive.Root className="composer">
-    <ComposerPrimitive.Input className="composer-input" placeholder={isJob ? "询问岗位分析、招聘邮件或面试复盘……" : "告诉 Fei 你要处理什么……"} rows={1} />
-    <div className="composer-actions">
-      <ComposerControls />
+    <ComposerPrimitive.Input
+      className="composer-input"
+      placeholder={isJob ? "询问岗位分析、招聘邮件或面试复盘……" : "告诉 Fei 你要处理什么……"}
+      rows={1}
+      title="Enter 发送 · Shift + Enter 换行"
+    />
+    <div className="composer-bar">
       <span className="permission-chip"><Icon name="lock" size={12} /> 写入需确认</span>
-      <span className="input-tip">Enter 发送 · Shift + Enter 换行</span>
-      <AuiIf condition={(state) => !state.thread.isRunning}><ComposerPrimitive.Send className="send-button">↑</ComposerPrimitive.Send></AuiIf>
-      <AuiIf condition={(state) => state.thread.isRunning}><ComposerPrimitive.Cancel className="send-button stop">■</ComposerPrimitive.Cancel></AuiIf>
+      <div className="composer-right">
+        <ComposerControls />
+        <AuiIf condition={(state) => !state.thread.isRunning}><ComposerPrimitive.Send className="send-button">↑</ComposerPrimitive.Send></AuiIf>
+        <AuiIf condition={(state) => state.thread.isRunning}><ComposerPrimitive.Cancel className="send-button stop">■</ComposerPrimitive.Cancel></AuiIf>
+      </div>
     </div>
   </ComposerPrimitive.Root>;
 }
@@ -179,9 +185,7 @@ function ComposerStats() {
 
   const contextPct = stats.tokens > 0 ? Math.min(100, Math.round((stats.tokens / contextWindow) * 100)) : 0;
 
-  if (stats.turns === 0) {
-    return <div className="composer-meta composer-meta-idle">发送第一条消息后，这里显示轮次、速度、token 与上下文用量</div>;
-  }
+  if (stats.turns === 0) return null;
 
   const rate = typeof stats.tps === "number" && stats.tps > 0 ? `${stats.tps.toFixed(0)} tok/s` : "—";
 
@@ -225,7 +229,7 @@ function ComposerControls() {
     return () => { alive = false; };
   }, []);
 
-  const current = models.find((item) => item.id === model);
+  const current = models.find((item) => item.id === model) || models[0];
 
   const persist = async (nextModel: string, nextEffort: string) => {
     if (!provider) return;
