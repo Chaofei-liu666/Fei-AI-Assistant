@@ -931,3 +931,31 @@ body {
 .digest-strip {
   margin-bottom: 16px;
 }
+
+/* prompt editor */
+.linkButton {
+  margin-left: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 12.5px;
+  text-decoration: underline;
+}
+
+.prompt-editor,
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 12.5px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+}
+
+.prompt-editor:focus,
+.textarea:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}

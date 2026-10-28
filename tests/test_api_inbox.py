@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -26,8 +28,11 @@ def _override():
         yield session
 
 
-app.dependency_overrides[get_db] = _override
-client = TestClient(app)
+@pytest.fixture
+def client():
+    app.dependency_overrides[get_db] = _override
+    yield TestClient(app)
+    app.dependency_overrides.pop(get_db, None)
 
 
 def _seed() -> None:
@@ -41,7 +46,7 @@ def _seed() -> None:
         db.commit()
 
 
-def test_inbox_aggregates_actions() -> None:
+def test_inbox_aggregates_actions(client: TestClient) -> None:
     _seed()
     payload = client.get("/api/inbox").json()
     kinds = {row["kind"] for row in payload["actions"]}
@@ -49,7 +54,7 @@ def test_inbox_aggregates_actions() -> None:
     assert payload["count"] >= 2
 
 
-def test_inbox_includes_low_stock_notes() -> None:
+def test_inbox_includes_low_stock_notes(client: TestClient) -> None:
     created = client.post("/api/household/items", json={
         "name": "洗衣液", "location": "浴室/柜子", "quantity": 0.5, "unit": "瓶",
     })

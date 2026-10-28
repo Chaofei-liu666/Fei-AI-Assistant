@@ -47,6 +47,7 @@ from ..secrets import SecretStore, secret_metadata
 from ..services import analyze_job, change_application_status, confirm_mail_suggestion, review_interview
 from ..storage import ObjectStorage
 from ..tasks import TaskManager
+from .agent_prompts import router as agent_prompts_router
 from .agents import router as agents_router
 from .career import router as career_router
 from .household import router as household_router
@@ -70,6 +71,7 @@ app = FastAPI(title="Fei Assistant API", version="0.1.0", lifespan=lifespan)
 app.include_router(career_router)
 app.include_router(household_router)
 app.include_router(agents_router)
+app.include_router(agent_prompts_router)
 app.include_router(mail_events_router)
 app.include_router(inbox_router)
 app.include_router(runs_router)

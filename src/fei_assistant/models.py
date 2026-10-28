@@ -285,3 +285,11 @@ class BrowserReview(Base, TimestampMixin):
     evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     requires_user_action: Mapped[bool] = mapped_column(Boolean, default=True)
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class AgentPrompt(Base, TimestampMixin):
+    """User-authored system prompt override for one agent (or the orchestrator)."""
+
+    __tablename__ = "agent_prompts"
+    agent_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    prompt: Mapped[str] = mapped_column(Text, default="")

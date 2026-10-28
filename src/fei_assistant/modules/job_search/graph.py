@@ -14,6 +14,7 @@ from typing_extensions import TypedDict
 
 from ...career_tools import APPLICATION_TOOLS, JOB_TOOLS, OPERATIONS_TOOLS, SCHEDULE_TOOLS
 from ...contracts import ModuleArtifact, ModuleTask
+from ...prompts import get_prompt
 from ...run_events import record_safe
 from ...structured import invoke_structured
 
@@ -93,7 +94,9 @@ def build_job_search_graph(model_provider: Callable[[], BaseChatModel]):
         name = state["specialist"]
         spec = SPECIALISTS[name]
         model = model_provider().bind_tools(spec["tools"]) if spec["tools"] else model_provider()
-        response = await model.ainvoke([SystemMessage(content=spec["prompt"]), *state.get("messages", [])])
+        extra = get_prompt("job_search", "")
+        prompt = f"{extra}\n\n{spec['prompt']}" if extra else spec["prompt"]
+        response = await model.ainvoke([SystemMessage(content=prompt), *state.get("messages", [])])
         update: dict = {"messages": [response]}
         run_id = _run_id(state)
         tool_calls = getattr(response, "tool_calls", None)

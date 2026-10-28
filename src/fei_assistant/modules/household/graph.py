@@ -12,6 +12,7 @@ from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
 from ...contracts import ModuleArtifact, ModuleTask
+from ...prompts import get_prompt
 from ...run_events import record_safe
 from ...household_tools import HOUSEHOLD_TOOLS
 
@@ -34,7 +35,7 @@ HOUSEHOLD_PROMPT = """你是 Fei 的物品 Agent，负责记录和查询家里�
 def build_household_graph(model_provider: Callable[[], BaseChatModel]):
     async def agent(state: HouseholdState) -> dict:
         model = model_provider().bind_tools(HOUSEHOLD_TOOLS)
-        response = await model.ainvoke([SystemMessage(content=HOUSEHOLD_PROMPT), *state.get("messages", [])])
+        response = await model.ainvoke([SystemMessage(content=get_prompt("household", HOUSEHOLD_PROMPT)), *state.get("messages", [])])
         update: dict = {"messages": [response]}
         run_id = getattr(state.get("module_task"), "id", None)
         tool_calls = getattr(response, "tool_calls", None)

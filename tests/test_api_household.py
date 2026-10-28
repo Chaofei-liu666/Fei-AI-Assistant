@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -24,11 +26,14 @@ def _override():
         yield session
 
 
-app.dependency_overrides[get_db] = _override
-client = TestClient(app)
+@pytest.fixture
+def client():
+    app.dependency_overrides[get_db] = _override
+    yield TestClient(app)
+    app.dependency_overrides.pop(get_db, None)
 
 
-def test_create_list_and_move_item() -> None:
+def test_create_list_and_move_item(client: TestClient) -> None:
     created = client.post("/api/household/items", json={
         "name": "洗衣液", "location": "卧室/衣柜/第二层", "quantity": 1, "unit": "瓶",
     })
@@ -47,7 +52,7 @@ def test_create_list_and_move_item() -> None:
     assert [row["action"] for row in history.json()] == ["put", "move"]
 
 
-def test_locations_and_low_stock() -> None:
+def test_locations_and_low_stock(client: TestClient) -> None:
     client.post("/api/household/items", json={"name": "抽纸", "location": "客厅/电视柜", "quantity": 1})
     locations = client.get("/api/household/locations").json()
     assert any(row["path"] == "客厅" for row in locations)
@@ -55,12 +60,12 @@ def test_locations_and_low_stock() -> None:
     assert any(row["name"] == "抽纸" for row in low)
 
 
-def test_agents_endpoint_lists_household() -> None:
+def test_agents_endpoint_lists_household(client: TestClient) -> None:
     payload = client.get("/api/agents").json()
     assert {"job_search", "household"} <= {row["id"] for row in payload}
 
 
-def test_batch_endpoint_writes_reviewed_list() -> None:
+def test_batch_endpoint_writes_reviewed_list(client: TestClient) -> None:
     response = client.post("/api/household/batch", json={"items": [
         {"name": "垃圾袋", "location": "厨房/水槽下", "quantity": 2, "unit": "卷"},
         {"name": "备用电池", "location": "储物间/纸箱", "quantity": 4},

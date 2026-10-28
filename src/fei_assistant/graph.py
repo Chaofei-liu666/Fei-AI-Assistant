@@ -12,6 +12,7 @@ from .modules.household import build_household_graph
 from .modules.job_search import build_job_search_graph
 from .routing import classify_route, latest_user_text, route_for_explicit_module
 from .schemas import RouteDecision
+from .prompts import get_prompt
 from .state import FeiState
 from .structured import invoke_structured
 
@@ -36,7 +37,7 @@ def build_graph(model_provider: Callable[[], BaseChatModel], checkpointer=None):
             return {"route": explicit, "active_module": explicit}
         try:
             decision = await invoke_structured(model_provider(), RouteDecision,
-                [SystemMessage(content=ROUTER_SYSTEM_PROMPT), *state["messages"]]
+                [SystemMessage(content=get_prompt("orchestrator", ROUTER_SYSTEM_PROMPT)), *state["messages"]]
             )
             route: Route = decision.route
         except Exception:

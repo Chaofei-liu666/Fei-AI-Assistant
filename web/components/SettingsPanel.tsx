@@ -8,8 +8,25 @@ type Provider = { slot: string; provider: string; base_url?: string; model?: str
 export function SettingsPanel() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [notice, setNotice] = useState("");
+  const [orch, setOrch] = useState<{ prompt: string; default_prompt: string; customized: boolean } | null>(null);
   const refresh = () => api<Provider[]>("/api/settings/providers").then(setProviders).catch((e) => setNotice(e.message));
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => { api<{ prompt: string; default_prompt: string; customized: boolean }>("/api/agents/orchestrator/prompt").then(setOrch).catch(() => {}); }, []);
+  const saveOrch = async () => {
+    if (!orch) return;
+    try {
+      const data = await api<{ prompt: string; customized: boolean }>("/api/agents/orchestrator/prompt", { method: "PUT", body: JSON.stringify({ prompt: orch.prompt }) });
+      setOrch({ ...orch, prompt: data.prompt, customized: data.customized });
+      setNotice("主 Agent 提示词已保存");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "保存失败"); }
+  };
+  const resetOrch = async () => {
+    try {
+      const data = await api<{ prompt: string; customized: boolean }>("/api/agents/orchestrator/prompt", { method: "DELETE" });
+      setOrch({ ...(orch as { default_prompt: string }), prompt: data.prompt, customized: data.customized });
+      setNotice("已恢复默认提示词");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "重置失败"); }
+  };
   const current = (slot: string) => providers.find((p) => p.slot === slot);
   const save = async (event: FormEvent<HTMLFormElement>, slot: string, provider: string) => {
     event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
@@ -19,7 +36,12 @@ export function SettingsPanel() {
     const payload = { slot, provider: String(values.provider || provider), base_url: values.base_url || null, model: values.model || null, secret: values.secret || null, secrets, config };
     try { await api(`/api/settings/providers/${slot}`, { method: "PUT", body: JSON.stringify(payload) }); setNotice("配置已保存到系统凭据库"); refresh(); } catch (error) { setNotice(error instanceof Error ? error.message : "保存失败"); }
   };
-  return <div className="workspace-scroll settings"><div className="workspace-heading"><div><h2>设置</h2><p>所有 Agent 继承全局文本模型；语音与邮箱凭据独立配置。</p></div></div>{notice && <div className="notice">{notice}</div>}
+  return <div className="workspace-scroll settings"><div className="workspace-heading"><div><h2>设置</h2></div></div>{notice && <div className="notice">{notice}</div>}
+    {orch && <section className="workspace-card settings-form">
+      <div><h3>主 Agent 提示词</h3><span className={`status-pill ${orch.customized ? "ready" : ""}`}>{orch.customized ? "自定义" : "默认"}</span></div>
+      <textarea className="prompt-editor" rows={8} value={orch.prompt} onChange={(event) => setOrch({ ...orch, prompt: event.target.value })} />
+      <div className="record-actions"><button className="primary" type="button" onClick={() => void saveOrch()}>保存提示词</button>{orch.customized && <button type="button" onClick={() => void resetOrch()}>恢复默认</button>}</div>
+    </section>}
     <ProviderForm title="全局文本模型" slot="text" provider={current("text")?.provider || "deepseek"} saved={current("text")} onSubmit={save}>
       <select name="provider" defaultValue={current("text")?.provider || "deepseek"}><option value="deepseek">DeepSeek 预设</option><option value="openai_compatible">自定义 OpenAI-compatible</option></select><input name="base_url" placeholder="Base URL（DeepSeek 可留空）" defaultValue={current("text")?.base_url} /><input name="model" placeholder="模型名，例如 deepseek-chat" defaultValue={current("text")?.model} required /><input name="secret" type="password" placeholder={current("text")?.configured ? `API Key 已保存 ····${current("text")?.secret_last_four}` : "API Key"} />
     </ProviderForm>
