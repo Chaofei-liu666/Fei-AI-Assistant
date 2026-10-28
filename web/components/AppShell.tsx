@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FeiAssistant } from "./FeiAssistant";
 import { HouseholdWorkspace } from "./HouseholdWorkspace";
 import { JobWorkspace } from "./JobWorkspace";
 import { RunsWorkspace } from "./RunsWorkspace";
 import { SettingsPanel } from "./SettingsPanel";
+import { api } from "@/lib/api";
 import { threads } from "@/lib/threads";
 import { ThreadList } from "./ThreadList";
 import { TodayWorkspace } from "./TodayWorkspace";
@@ -28,14 +29,25 @@ const careerNav: [string, string, IconName, string][] = [
 const primaryNav: [View, string, IconName][] = [
   ["chat", "主对话", "chat"],
   ["today", "今天", "dashboard"],
-  ["job", "求职", "briefcase"],
-  ["items", "物品", "box"],
   ["runs", "运行记录", "clock"],
 ];
+
+type AgentEntry = { id: string; title: string; description: string; target: string };
+
+const agentIcons: Record<string, IconName> = { job_search: "briefcase", household: "box" };
 
 export function AppShell() {
   const [view, setView] = useState<View>("chat");
   const [jobTab, setJobTab] = useState("overview");
+  const [agents, setAgents] = useState<AgentEntry[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    api<AgentEntry[]>("/api/agents")
+      .then((rows) => { if (alive) setAgents(rows); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const current = careerNav.find(([id]) => id === jobTab);
   const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
   const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "告诉 Fei 你要处理什么" : view === "items" ? "用一句话记录东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
@@ -62,6 +74,18 @@ export function AppShell() {
             <Icon name={icon} size={17} /><span>{label}</span>
             {id === "today" && <em />}
           </button>)}
+        </nav>
+        <p className="side-label">AGENTS</p>
+        <nav className="side-nav">
+          {agents.map((agent) => <button
+            key={agent.id}
+            className={view === (agent.target || "").split("/")[0] ? "active" : ""}
+            title={agent.description}
+            onClick={() => navigate(agent.target || "chat")}
+          >
+            <Icon name={agentIcons[agent.id] || "sparkles"} size={17} /><span>{agent.title}</span>
+          </button>)}
+          {agents.length === 0 && <span className="side-empty">未注册任何 Agent</span>}
         </nav>
         <p className="side-label">最近</p>
         <ThreadList onOpen={() => setView("chat")} />

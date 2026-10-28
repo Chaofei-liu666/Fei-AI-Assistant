@@ -11,6 +11,7 @@ class AgentSpec:
     title: str
     description: str
     page: str
+    target: str
     tool_names: tuple[str, ...]
     prompt: str
     assistant_id: str | None = None
@@ -22,6 +23,7 @@ AGENTS: dict[str, AgentSpec] = {
         title="求职 Agent",
         description="岗位情报、公开页抓取、投递记录、日程截止与面试复盘",
         page="/job",
+        target="job/overview",
         tool_names=(
             "search_2027_campus_jobs",
             "get_job_evidence",
@@ -36,6 +38,7 @@ AGENTS: dict[str, AgentSpec] = {
         title="物品 Agent",
         description="用一句话记录家里物品的位置与数量，并按位置或名称查询",
         page="/items",
+        target="items",
         tool_names=(
             "add_household_item",
             "move_household_item",
@@ -64,6 +67,7 @@ def list_agents() -> list[dict]:
             "title": spec.title,
             "description": spec.description,
             "page": spec.page,
+            "target": spec.target,
             "tools": list(spec.tool_names),
         }
         for spec in AGENTS.values()
