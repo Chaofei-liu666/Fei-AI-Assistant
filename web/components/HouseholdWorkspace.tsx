@@ -269,7 +269,6 @@ export function HouseholdWorkspace() {
       <div>
         <p className="eyebrow">HOUSEHOLD AGENT</p>
         <h2>物品清单</h2>
-        <p className={styles.copy}>直接说「洗衣液放衣柜第二层」「又买了六包抽纸」「洗衣液用掉一瓶」。清楚的会立刻记下并可撤销；说不清的才会问你一句。</p>
       </div>
       <span className={styles.count}>{items.length} 件在库</span>
     </section>

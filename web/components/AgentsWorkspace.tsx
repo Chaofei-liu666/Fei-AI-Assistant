@@ -32,7 +32,6 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
       <div>
         <p className={styles.eyebrow}>AGENTS</p>
         <h1>子 Agent</h1>
-        <p className={styles.sub}>Fei 可以调用的能力。带工作区的可以进去看数据，只在对话里工作的就交给主对话。</p>
       </div>
       <span className={styles.count}>{agents.length} 个</span>
     </header>
@@ -59,9 +58,5 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
       {agents.length === 0 && !error && <p className={styles.empty}>还没有注册任何 Agent。</p>}
     </div>
 
-    <section className={styles.note}>
-      <Icon name="sparkles" size={15} />
-      <p>新增一个 Agent 只需要在注册表里加一条：工具、提示词、是否需要工作区。侧栏不用改。</p>
-    </section>
   </div>;
 }

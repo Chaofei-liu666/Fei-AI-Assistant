@@ -74,7 +74,6 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
       <div className={styles.heroText}>
         <p className={styles.eyebrow}>TODAY · {dateLabel}</p>
         <h1>{actions.length > 0 ? `${actions.length} 件需要你处理` : "今天没有等你的事"}</h1>
-        <p className={styles.sub}>邮件自动更新、后台任务和物品库存的变化都汇总在这里，不用逐个页面翻。</p>
       </div>
       <div className={styles.heroActions}>
         <button className={styles.ghost} onClick={() => void load()} disabled={loading}>

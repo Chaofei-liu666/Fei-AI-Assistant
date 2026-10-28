@@ -79,7 +79,6 @@ export function RunsWorkspace() {
       <div>
         <p className="eyebrow">RUNS</p>
         <h2>运行记录</h2>
-        <p className={styles.copy}>每一次对话或后台任务都是一次运行。这里按顺序记录计划、委派、工具调用和结果；默认只看到摘要，点开才看细节。</p>
       </div>
       <span className={styles.count}>{runs.length} 次运行</span>
     </section>

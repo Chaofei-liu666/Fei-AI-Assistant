@@ -44,7 +44,6 @@ export function AppShell() {
   }, []);
   const current = careerNav.find(([id]) => id === jobTab);
   const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "agents" ? "子 Agent" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
-  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "告诉 Fei 你要处理什么" : view === "agents" ? "Fei 可以调用的能力" : view === "items" ? "用一句话记录东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
 
   const navigate = (target: string) => {
     const [next, tab] = target.split("/");
@@ -88,7 +87,7 @@ export function AppShell() {
 
     <main className="workspace-main">
       <header className="workspace-topbar">
-        <div><h1>{title}</h1><p>{subtitle}</p></div>
+        <div><h1>{title}</h1></div>
         <button className="command-trigger"><Icon name="search" size={14} /><span>搜索或运行命令</span><kbd>Ctrl K</kbd></button>
         <div className="topbar-actions"><span className="system-state"><i /> 全部服务正常</span><button aria-label="通知"><Icon name="alert" size={16} /></button></div>
       </header>

@@ -95,13 +95,11 @@ export function ChatThread({ module, onNavigate }: { module: "general" | "job_se
         <section className="welcome">
           <div className="welcome-logo">F</div><p className="eyebrow">FEI ASSISTANT</p>
           <h2>{isJob ? "把求职过程变成可追溯的工作流" : "今天想先处理什么？"}</h2>
-          <p className="welcome-copy">{isJob ? "这里负责求职对话；岗位、投递、邮件和面试数据请在工作区管理。" : "Fei 会处理通用请求，并在任务明确涉及求职时自动调用求职模块。"}</p>
           <TodayDigest onNavigate={onNavigate} />
           <div className="suggest-row">{(isJob ? jobCapabilities : generalSuggestions).map(([icon, title, text, prompt]) => <ThreadPrimitive.Suggestion className="suggest-chip" prompt={prompt} key={title} title={text}><Icon name={icon} size={14} /><span>{title}</span></ThreadPrimitive.Suggestion>)}</div>
           <div className="welcome-composer">
             <ChatComposer isJob={isJob} />
             <ComposerStats />
-            <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
           </div>
         </section>
       </AuiIf>
@@ -110,7 +108,6 @@ export function ChatThread({ module, onNavigate }: { module: "general" | "job_se
         <ThreadPrimitive.ViewportFooter className="composer-footer">
           <ChatComposer isJob={isJob} />
           <ComposerStats />
-          <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
         </ThreadPrimitive.ViewportFooter>
       </AuiIf>
     </ThreadPrimitive.Viewport>
