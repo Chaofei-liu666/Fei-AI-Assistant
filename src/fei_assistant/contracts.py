@@ -3,7 +3,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-Route = Literal["general", "job_search", "clarify"]
+Route = Literal["general", "job_search", "household", "clarify"]
 
 
 class ModuleMessage(BaseModel):

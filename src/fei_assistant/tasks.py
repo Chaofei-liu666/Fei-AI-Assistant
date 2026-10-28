@@ -11,6 +11,7 @@ from .career import crawl_company_source
 from .domain import TaskStatus
 from .mail import Imap163Client, sync_mailbox
 from .models import Automation, BackgroundTask, CompanySource, Document, Interview, ProviderConfig, TranscriptionJob
+from .run_events import record_safe
 from .providers import build_text_model, get_provider_config
 from .secrets import SecretStore
 from .storage import ObjectStorage
@@ -125,6 +126,7 @@ class TaskManager:
             task.attempts += 1
             task.error = None
             db.commit()
+            record_safe(task.id, "note", actor="task_manager", title=f"开始执行 {task.kind}", status="running")
             try:
                 if task.kind == "mail_sync":
                     task.result = await self._mail_sync(db)
@@ -138,6 +140,8 @@ class TaskManager:
                     raise ValueError(f"unknown task kind: {task.kind}")
                 task.status = TaskStatus.SUCCEEDED.value
                 task.progress = 100
+                record_safe(task.id, "result", actor="task_manager", title="执行完成",
+                            summary=str(task.result)[:300])
             except Exception as exc:
                 db.rollback()
                 task = db.get(BackgroundTask, task_id)
@@ -145,6 +149,8 @@ class TaskManager:
                     return
                 task.status = TaskStatus.FAILED.value
                 task.error = str(exc)[:4000]
+                record_safe(task.id, "error", actor="task_manager", title="执行失败",
+                            status="failed", error=str(exc)[:500])
             db.add(task)
             automation_id = (task.payload or {}).get("automation_id")
             if automation_id:

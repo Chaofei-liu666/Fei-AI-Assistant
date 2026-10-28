@@ -29,6 +29,24 @@ JOB_TASK_MARKERS = (
 )
 
 
+HOUSEHOLD_MARKERS = (
+    "放在",
+    "放到",
+    "放回",
+    "搁在",
+    "收在",
+    "衣柜",
+    "抽屉",
+    "储物间",
+    "柜子里",
+    "还剩",
+    "用完了",
+    "物品",
+    "东西放",
+    "放在哪",
+)
+
+
 def latest_user_text(messages: list[Any]) -> str:
     for message in reversed(messages):
         if message.type == "human":
@@ -41,12 +59,16 @@ def classify_route(text: str) -> Route:
     normalized = text.strip().lower()
     if any(marker in normalized for marker in JOB_TASK_MARKERS):
         return "job_search"
+    if any(marker in normalized for marker in HOUSEHOLD_MARKERS):
+        return "household"
     return "general"
 
 
 def route_for_explicit_module(module: str | None) -> Route | None:
     if module == "job_search":
         return "job_search"
+    if module == "household":
+        return "household"
     if module == "general":
         return "general"
     return None

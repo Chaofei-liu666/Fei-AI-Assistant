@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .domain import MailType
+from .mail_events import apply_event, record_event
 from .models import (
     Application,
     EmailSyncState,
@@ -141,6 +142,25 @@ async def sync_mailbox(
                 rationale=analysis.rationale,
             )
         )
+        mail_event = record_event(
+            db,
+            mailbox=mailbox,
+            uid=uid,
+            message_id=message.get("Message-ID"),
+            subject=subject,
+            sender=sender,
+            received_at=stored.sent_at,
+            category=analysis.mail_type.value,
+            confidence=analysis.confidence,
+            rationale=analysis.rationale,
+            summary=analysis.summary,
+            application_id=application_id,
+            suggested_status=analysis.suggested_status.value if analysis.suggested_status else None,
+            deadline=analysis.deadline,
+            deadline_kind=analysis.deadline_kind,
+        )
+        if mail_event is not None:
+            apply_event(db, mail_event)
         kept += 1
     state.last_synced_at = datetime.now(timezone.utc)
     state.last_error = None

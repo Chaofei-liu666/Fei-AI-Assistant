@@ -4,7 +4,7 @@ export type IconName =
   | "chat" | "briefcase" | "settings" | "dashboard" | "target"
   | "columns" | "mail" | "mic" | "sparkles" | "upload" | "plus"
   | "arrow" | "check" | "alert" | "server" | "lock" | "file"
-  | "search" | "refresh" | "clock" | "chevron" | "external" | "close";
+  | "search" | "refresh" | "clock" | "chevron" | "external" | "close" | "box";
 
 const paths: Record<IconName, React.ReactNode> = {
   chat: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 8h8M8 12h5" /></>,
@@ -30,6 +30,7 @@ const paths: Record<IconName, React.ReactNode> = {
   chevron: <path d="m9 18 6-6-6-6" />,
   external: <><path d="M15 3h6v6M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  box: <><path d="M21 8 12 3 3 8v8l9 5 9-5Z" /><path d="m3 8 9 5 9-5M12 13v8" /></>,
 };
 
 export function Icon({ name, size = 18, ...props }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {

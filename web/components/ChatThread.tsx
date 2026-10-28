@@ -1,6 +1,7 @@
 "use client";
 
-import { AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive } from "@assistant-ui/react";
+import { useEffect, useMemo, useState } from "react";
+import { AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useAuiState } from "@assistant-ui/react";
 import { Icon, type IconName } from "./Icon";
 
 const jobCapabilities = [
@@ -31,11 +32,12 @@ export function ChatThread({ module }: { module: "general" | "job_search" }) {
       <ThreadPrimitive.ViewportFooter className="composer-footer">
         <ComposerPrimitive.Root className="composer">
           <ComposerPrimitive.Input className="composer-input" placeholder={isJob ? "询问岗位分析、招聘邮件或面试复盘……" : "告诉 Fei 你要处理什么……"} rows={1} />
-          <div className="composer-actions"><span className="input-tip">Enter 发送 · Shift + Enter 换行</span>
+          <div className="composer-actions"><ComposerControls /><span className="permission-chip"><Icon name="lock" size={12} /> 写入需确认</span><span className="input-tip">Enter 发送 · Shift + Enter 换行</span>
             <AuiIf condition={(state) => !state.thread.isRunning}><ComposerPrimitive.Send className="send-button">↑</ComposerPrimitive.Send></AuiIf>
             <AuiIf condition={(state) => state.thread.isRunning}><ComposerPrimitive.Cancel className="send-button stop">■</ComposerPrimitive.Cancel></AuiIf>
           </div>
         </ComposerPrimitive.Root>
+        <ComposerStats />
         <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
       </ThreadPrimitive.ViewportFooter>
     </ThreadPrimitive.Viewport>
@@ -44,3 +46,184 @@ export function ChatThread({ module }: { module: "general" | "job_search" }) {
 
 function UserMessage() { return <MessagePrimitive.Root className="message-row user-row"><div className="user-message"><MessagePrimitive.Parts /></div></MessagePrimitive.Root>; }
 function AssistantMessage({ module }: { module: string }) { return <MessagePrimitive.Root className="message-row assistant-row"><div className="assistant-avatar">F</div><div className="assistant-content"><div className="message-author">Fei 智能助手{module === "job_search" ? " · 求职模块" : ""}</div><div className="assistant-message"><MessagePrimitive.Parts /></div></div></MessagePrimitive.Root>; }
+
+type MessageStats = {
+  role: "user" | "assistant" | "system";
+  metadata?: {
+    timing?: { toolCallCount?: number; tokenCount?: number; tokensPerSecond?: number };
+    steps?: { usage?: { inputTokens?: number; outputTokens?: number } }[];
+  };
+};
+
+type ModelInfo = { id: string; name: string; efforts: string[]; default_effort: string; context_window?: number };
+type ProviderRow = {
+  slot: string;
+  provider: string;
+  base_url: string | null;
+  model: string | null;
+  config: Record<string, unknown>;
+};
+
+const FALLBACK_CONTEXT = 128_000;
+let contextPromise: Promise<number> | null = null;
+
+function resetContextCache() {
+  contextPromise = null;
+}
+
+function loadContextWindow(): Promise<number> {
+  if (!contextPromise) {
+    contextPromise = Promise.all([
+      fetch("/api/settings/providers").then((response) => (response.ok ? response.json() : [])),
+      fetch("/api/settings/models").then((response) => (response.ok ? response.json() : [])),
+    ])
+      .then(([rows, list]) => {
+        const text = (rows as ProviderRow[]).find((row) => row.slot === "text");
+        const info = (list as ModelInfo[]).find((item) => item.id === text?.model);
+        return info?.context_window || FALLBACK_CONTEXT;
+      })
+      .catch(() => FALLBACK_CONTEXT);
+  }
+  return contextPromise;
+}
+
+function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return `${value}`;
+}
+
+function ComposerStats() {
+  const messages = useAuiState((state) => state.thread.messages) as unknown as MessageStats[];
+  const [contextWindow, setContextWindow] = useState(FALLBACK_CONTEXT);
+
+  useEffect(() => {
+    const update = () => { void loadContextWindow().then(setContextWindow); };
+    update();
+    window.addEventListener("fei:model-changed", update);
+    return () => window.removeEventListener("fei:model-changed", update);
+  }, []);
+
+  const stats = useMemo(() => {
+    let turns = 0;
+    let steps = 0;
+    let tokens = 0;
+    let tps: number | undefined;
+    for (const message of messages ?? []) {
+      if (message.role === "user") turns += 1;
+      if (message.role !== "assistant") continue;
+      const timing = message.metadata?.timing;
+      if (timing?.toolCallCount) steps += timing.toolCallCount;
+      if (typeof timing?.tokensPerSecond === "number") tps = timing.tokensPerSecond;
+      const usage = (message.metadata?.steps ?? []).reduce(
+        (sum, step) => sum + (step.usage?.inputTokens ?? 0) + (step.usage?.outputTokens ?? 0), 0);
+      tokens += usage || timing?.tokenCount || 0;
+    }
+    return { turns, steps, tokens, tps };
+  }, [messages]);
+
+  if (stats.turns === 0) return null;
+  const contextPct = stats.tokens > 0 ? Math.min(100, Math.round((stats.tokens / contextWindow) * 100)) : 0;
+
+  return <div className="composer-meta">
+    <span>↻ {stats.turns} 轮 {stats.steps} 步</span>
+    {typeof stats.tps === "number" && stats.tps > 0 && <span>· {stats.tps.toFixed(0)} tok/s</span>}
+    {stats.tokens > 0 && <span>· {formatTokens(stats.tokens)} tok</span>}
+    {contextPct > 0 && <span>· 上下文 {contextPct}%</span>}
+  </div>;
+}
+
+const effortLabels: Record<string, string> = { low: "快速", high: "标准", max: "深度" };
+
+function ComposerControls() {
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [provider, setProvider] = useState<ProviderRow | null>(null);
+  const [model, setModel] = useState("");
+  const [effort, setEffort] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetch("/api/settings/providers").then((response) => (response.ok ? response.json() : [])),
+      fetch("/api/settings/models").then((response) => (response.ok ? response.json() : [])),
+    ])
+      .then(([rows, list]) => {
+        if (!alive) return;
+        const text = (rows as ProviderRow[]).find((row) => row.slot === "text");
+        if (!text) return;
+        const available = Array.isArray(list) ? (list as ModelInfo[]) : [];
+        setProvider(text);
+        setModels(available);
+        setModel(text.model || "");
+        const saved = typeof text.config?.effort === "string" ? text.config.effort : "";
+        const info = available.find((item) => item.id === text.model);
+        setEffort(saved || info?.default_effort || "high");
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const current = models.find((item) => item.id === model);
+
+  const persist = async (nextModel: string, nextEffort: string) => {
+    if (!provider) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/settings/providers/text", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot: "text",
+          provider: provider.provider,
+          base_url: provider.base_url,
+          model: nextModel,
+          config: { ...(provider.config || {}), effort: nextEffort },
+        }),
+      });
+      if (response.ok) {
+        const saved = await response.json();
+        setProvider({ ...provider, model: saved.model, config: saved.config || {} });
+        resetContextCache();
+        window.dispatchEvent(new Event("fei:model-changed"));
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (models.length === 0) return null;
+
+  return <div className="composer-controls">
+    <select
+      className="composer-select"
+      value={model}
+      disabled={saving}
+      aria-label="模型"
+      onChange={(event) => {
+        const next = event.target.value;
+        const info = models.find((item) => item.id === next);
+        const nextEffort = info?.efforts.includes(effort) ? effort : (info?.default_effort || "high");
+        setModel(next);
+        setEffort(nextEffort);
+        void persist(next, nextEffort);
+      }}
+    >
+      {model && !models.some((item) => item.id === model) && <option value={model}>{model}</option>}
+      {models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+    </select>
+    {current && current.efforts.length > 0 && <select
+      className="composer-select"
+      value={effort}
+      disabled={saving}
+      aria-label="推理等级"
+      onChange={(event) => {
+        const next = event.target.value;
+        setEffort(next);
+        void persist(model, next);
+      }}
+    >
+      {current.efforts.map((level) => <option key={level} value={level}>推理 {effortLabels[level] || level}</option>)}
+    </select>}
+  </div>;
+}

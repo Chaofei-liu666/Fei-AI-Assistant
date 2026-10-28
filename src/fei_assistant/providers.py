@@ -37,7 +37,39 @@ def build_text_model(db: Session, secrets: SecretStore | None = None):
         base_url=base_url,
         temperature=0,
         streaming=True,
+        extra_body=({"reasoning_effort": config.config["effort"]} if config.config.get("effort") else None),
     )
+
+
+_MODEL_CACHE: dict[str, list[dict]] = {}
+
+
+def list_text_models(db: Session, secrets: SecretStore | None = None, refresh: bool = False) -> list[dict]:
+    """Ask the provider which models it serves, including their reasoning levels."""
+    config = get_provider_config(db, "text")
+    provider = config.config.get("provider", "deepseek")
+    base_url = (config.base_url or (DEEPSEEK_BASE_URL if provider == "deepseek" else "")).rstrip("/")
+    api_key = (secrets or SecretStore()).get(config.secret_ref)
+    if not base_url or not api_key:
+        raise RuntimeError("text provider base URL or secret is unavailable")
+    if not refresh and base_url in _MODEL_CACHE:
+        return _MODEL_CACHE[base_url]
+    with httpx.Client(timeout=20) as client:
+        response = client.get(f"{base_url}/models", headers={"Authorization": f"Bearer {api_key}"})
+        response.raise_for_status()
+        payload = response.json()
+    models: list[dict] = []
+    for item in payload.get("data", []):
+        effort = item.get("effort") or {}
+        models.append({
+            "id": item.get("id"),
+            "name": item.get("name") or item.get("id"),
+            "context_window": item.get("context_window"),
+            "efforts": effort.get("supported_levels") or ["low", "high", "max"],
+            "default_effort": effort.get("default_level") or "high",
+        })
+    _MODEL_CACHE[base_url] = models
+    return models
 
 
 async def test_text_provider(config: ProviderConfigInputLike, secret: str) -> dict:

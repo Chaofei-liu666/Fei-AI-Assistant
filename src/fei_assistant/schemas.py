@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -9,7 +9,7 @@ from .domain import ApplicationStatus, MailType, MatchLevel
 
 
 class RouteDecision(BaseModel):
-    route: Literal["general", "job_search", "clarify"]
+    route: Literal["general", "job_search", "household", "clarify"]
     reason: str = Field(description="一句话说明路由依据")
 
 
@@ -56,6 +56,10 @@ class MailAnalysisOutput(BaseModel):
     confidence: float = Field(ge=0, le=1)
     rationale: str
     summary: str
+    # Explicit deadline when the mail states one; "none" only when the mail says
+    # there is no deadline. "unknown" means the mail simply did not mention it.
+    deadline: date | None = None
+    deadline_kind: Literal["explicit", "none", "unknown"] = "unknown"
 
 
 class AnswerReview(BaseModel):

@@ -31,7 +31,7 @@ from ..models import (
     ReviewReport,
     TranscriptionJob,
 )
-from ..providers import build_text_model, test_dashscope_key, test_text_provider
+from ..providers import build_text_model, list_text_models, test_dashscope_key, test_text_provider
 from ..schemas import (
     ApplicationCreate,
     ApplicationStatusUpdate,
@@ -47,7 +47,11 @@ from ..secrets import SecretStore, secret_metadata
 from ..services import analyze_job, change_application_status, confirm_mail_suggestion, review_interview
 from ..storage import ObjectStorage
 from ..tasks import TaskManager
+from .agents import router as agents_router
 from .career import router as career_router
+from .household import router as household_router
+from .mail_events import router as mail_events_router
+from .runs import router as runs_router
 
 
 task_manager = TaskManager()
@@ -63,6 +67,10 @@ async def lifespan(application: FastAPI):
 
 app = FastAPI(title="Fei Assistant API", version="0.1.0", lifespan=lifespan)
 app.include_router(career_router)
+app.include_router(household_router)
+app.include_router(agents_router)
+app.include_router(mail_events_router)
+app.include_router(runs_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
@@ -97,6 +105,14 @@ def health() -> dict:
 @app.get("/api/settings/providers")
 def list_providers(db: Session = Depends(get_db)) -> list[dict]:
     return [_provider_view(row) for row in db.scalars(select(ProviderConfig)).all()]
+
+
+@app.get("/api/settings/models")
+def list_models(db: Session = Depends(get_db)) -> list[dict]:
+    try:
+        return list_text_models(db)
+    except Exception as exc:
+        raise HTTPException(400, f"cannot list models: {exc}") from exc
 
 
 @app.put("/api/settings/providers/{slot}")

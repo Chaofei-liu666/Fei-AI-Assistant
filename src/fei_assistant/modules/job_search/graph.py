@@ -12,12 +12,13 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
-from ...career_tools import APPLICATION_TOOLS, JOB_TOOLS, MAIL_TOOLS, OPERATIONS_TOOLS, SCHEDULE_TOOLS
+from ...career_tools import APPLICATION_TOOLS, JOB_TOOLS, OPERATIONS_TOOLS, SCHEDULE_TOOLS
 from ...contracts import ModuleArtifact, ModuleTask
+from ...run_events import record_safe
 from ...structured import invoke_structured
 
 Specialist = Literal[
-    "job_intelligence_agent", "application_status_agent", "recruitment_mail_agent",
+    "job_intelligence_agent", "application_status_agent",
     "schedule_management_agent", "crawler_operations_agent", "interview_review_agent", "clarify",
 ]
 
@@ -37,7 +38,6 @@ class JobSearchState(TypedDict, total=False):
 JOB_ROUTER_PROMPT = """你是 Fei 求职模块的 Supervisor。只选择一个 Specialist：
 - job_intelligence_agent：2027 校招岗位、公司来源、JD、简历证据和能力缺口。
 - application_status_agent：投递记录、事件时间线、官网进度和身份关联。
-- recruitment_mail_agent：招聘邮件、面试邀请、测评、拒信、Offer 和人工确认。
 - schedule_management_agent：招聘日程、截止时间和待办。
 - crawler_operations_agent：岗位抓取、任务状态、恢复和自动化。
 - interview_review_agent：已确认面试文本的逐题复盘。
@@ -53,12 +53,7 @@ SPECIALISTS = {
     "application_status_agent": {
         "title": "投递时间线", "kind": "career.application-timeline", "tools": APPLICATION_TOOLS,
         "prompt": """你是 application_status_agent。使用工具读取投递事实和当前阶段。
-不得声称已经修改阶段；官网证据、邮件建议和身份不确定时必须要求用户在工作区确认。官网复核不得把可信阶段降级。""",
-    },
-    "recruitment_mail_agent": {
-        "title": "邮件确认", "kind": "career.mail-confirmation", "tools": MAIL_TOOLS,
-        "prompt": """你是 recruitment_mail_agent。工具只提供只读邮件摘要。
-说明邮件类型、可能关联的投递和建议阶段；不得发送、删除邮件、改变已读状态或直接更新投递。所有建议必须在邮件工作区确认。""",
+不得声称已经修改阶段；官网证据和身份不确定时必须要求用户在工作区确认。官网复核不得把可信阶段降级。""",
     },
     "schedule_management_agent": {
         "title": "日程与待办", "kind": "career.schedule", "tools": SCHEDULE_TOOLS,
@@ -76,12 +71,22 @@ SPECIALISTS = {
 }
 
 
+def _run_id(state: JobSearchState) -> str | None:
+    task = state.get("module_task")
+    return getattr(task, "id", None) if task else None
+
+
 def build_job_search_graph(model_provider: Callable[[], BaseChatModel]):
     all_tools = {tool.name: tool for spec in SPECIALISTS.values() for tool in spec["tools"]}
 
     async def route(state: JobSearchState) -> dict:
         decision = await invoke_structured(model_provider(), JobIntent,
             [SystemMessage(content=JOB_ROUTER_PROMPT), *state.get("messages", [])])
+        run_id = _run_id(state)
+        record_safe(run_id, "plan", actor="orchestrator", title="拆解求职任务", summary=decision.reason)
+        title = SPECIALISTS.get(decision.specialist, {}).get("title", decision.specialist)
+        record_safe(run_id, "delegate", actor="orchestrator", title=f"委托给 {title}",
+                    detail={"specialist": decision.specialist})
         return {"specialist": decision.specialist}
 
     async def specialist(state: JobSearchState) -> dict:
@@ -90,7 +95,15 @@ def build_job_search_graph(model_provider: Callable[[], BaseChatModel]):
         model = model_provider().bind_tools(spec["tools"]) if spec["tools"] else model_provider()
         response = await model.ainvoke([SystemMessage(content=spec["prompt"]), *state.get("messages", [])])
         update: dict = {"messages": [response]}
-        if not getattr(response, "tool_calls", None):
+        run_id = _run_id(state)
+        tool_calls = getattr(response, "tool_calls", None)
+        if tool_calls:
+            record_safe(run_id, "tool", actor=name,
+                        title=", ".join(str(call.get("name", "tool")) for call in tool_calls),
+                        status="running", detail={"calls": [call.get("name") for call in tool_calls]})
+        else:
+            record_safe(run_id, "result", actor=name, title=spec["title"],
+                        summary=str(response.content)[:500])
             update["artifacts"] = [ModuleArtifact(
                 id=str(uuid.uuid4()), kind=spec["kind"], title=spec["title"],
                 payload={"content": str(response.content), "specialist": name, "read_only": True},
