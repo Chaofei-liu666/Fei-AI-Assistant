@@ -32,7 +32,7 @@ const primaryNav: [View, string, IconName][] = [
   ["runs", "运行记录", "clock"],
 ];
 
-type AgentEntry = { id: string; title: string; description: string; target: string };
+type AgentEntry = { id: string; title: string; description: string; target: string | null; surface: string };
 
 const agentIcons: Record<string, IconName> = { job_search: "briefcase", household: "box" };
 
@@ -77,7 +77,7 @@ export function AppShell() {
         </nav>
         <p className="side-label">AGENTS</p>
         <nav className="side-nav">
-          {agents.map((agent) => <button
+          {agents.filter((agent) => agent.surface === "workspace" && agent.target).map((agent) => <button
             key={agent.id}
             className={view === (agent.target || "").split("/")[0] ? "active" : ""}
             title={agent.description}
@@ -85,7 +85,7 @@ export function AppShell() {
           >
             <Icon name={agentIcons[agent.id] || "sparkles"} size={17} /><span>{agent.title}</span>
           </button>)}
-          {agents.length === 0 && <span className="side-empty">未注册任何 Agent</span>}
+          {agents.filter((agent) => agent.surface === "workspace" && agent.target).length === 0 && <span className="side-empty">还没有带工作区的 Agent</span>}
         </nav>
         <p className="side-label">最近</p>
         <ThreadList onOpen={() => setView("chat")} />

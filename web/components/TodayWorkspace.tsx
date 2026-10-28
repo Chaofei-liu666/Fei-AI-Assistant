@@ -15,7 +15,7 @@ type InboxItem = {
 };
 
 type Inbox = { count: number; actions: InboxItem[]; notes: InboxItem[] };
-type AgentCard = { id: string; title: string; description: string; target: string };
+type AgentCard = { id: string; title: string; description: string; target: string | null; surface: string };
 
 const kindIcon: Record<string, IconName> = {
   profile: "file",
@@ -153,8 +153,8 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
 
     {agents.length > 0 && <section className={styles.agents}>
       <div className={styles.agentsGrid}>
-        {agents.map((agent) => <button key={agent.id} className={styles.agentCard}
-          onClick={() => onNavigate(agent.target)}>
+        {agents.filter((agent) => agent.surface === "workspace" && agent.target).map((agent) => <button key={agent.id} className={styles.agentCard}
+          onClick={() => onNavigate(agent.target as string)}>
           <span className={styles.agentTop}>
             <b>{agent.title}</b>
             <Icon name="arrow" size={15} />
