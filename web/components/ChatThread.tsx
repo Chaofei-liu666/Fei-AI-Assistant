@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useAuiState } from "@assistant-ui/react";
+import { api } from "@/lib/api";
 import { Icon, type IconName } from "./Icon";
 
 const jobCapabilities = [
@@ -74,8 +75,8 @@ function resetContextCache() {
 function loadContextWindow(): Promise<number> {
   if (!contextPromise) {
     contextPromise = Promise.all([
-      fetch("/api/settings/providers").then((response) => (response.ok ? response.json() : [])),
-      fetch("/api/settings/models").then((response) => (response.ok ? response.json() : [])),
+      api<ProviderRow[]>("/api/settings/providers").catch(() => [] as ProviderRow[]),
+      api<ModelInfo[]>("/api/settings/models").catch(() => [] as ModelInfo[]),
     ])
       .then(([rows, list]) => {
         const text = (rows as ProviderRow[]).find((row) => row.slot === "text");
@@ -145,8 +146,8 @@ function ComposerControls() {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      fetch("/api/settings/providers").then((response) => (response.ok ? response.json() : [])),
-      fetch("/api/settings/models").then((response) => (response.ok ? response.json() : [])),
+      api<ProviderRow[]>("/api/settings/providers").catch(() => [] as ProviderRow[]),
+      api<ModelInfo[]>("/api/settings/models").catch(() => [] as ModelInfo[]),
     ])
       .then(([rows, list]) => {
         if (!alive) return;
@@ -170,9 +171,8 @@ function ComposerControls() {
     if (!provider) return;
     setSaving(true);
     try {
-      const response = await fetch("/api/settings/providers/text", {
+      const saved = await api<ProviderRow>("/api/settings/providers/text", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slot: "text",
           provider: provider.provider,
@@ -181,12 +181,9 @@ function ComposerControls() {
           config: { ...(provider.config || {}), effort: nextEffort },
         }),
       });
-      if (response.ok) {
-        const saved = await response.json();
-        setProvider({ ...provider, model: saved.model, config: saved.config || {} });
-        resetContextCache();
-        window.dispatchEvent(new Event("fei:model-changed"));
-      }
+      setProvider({ ...provider, model: saved.model, config: saved.config || {} });
+      resetContextCache();
+      window.dispatchEvent(new Event("fei:model-changed"));
     } finally {
       setSaving(false);
     }

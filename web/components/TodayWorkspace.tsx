@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { Icon, type IconName } from "./Icon";
 import styles from "./TodayWorkspace.module.css";
 
@@ -14,6 +15,7 @@ type InboxItem = {
 };
 
 type Inbox = { count: number; actions: InboxItem[]; notes: InboxItem[] };
+type AgentCard = { id: string; title: string; description: string; page: string };
 
 const kindIcon: Record<string, IconName> = {
   profile: "file",
@@ -42,13 +44,12 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
   const [data, setData] = useState<Inbox | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [agents, setAgents] = useState<AgentCard[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/inbox");
-      if (!response.ok) throw new Error(response.statusText);
-      setData(await response.json() as Inbox);
+      setData(await api<Inbox>("/api/inbox"));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -59,75 +60,125 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
 
   useEffect(() => {
     void load();
+    void api<AgentCard[]>("/api/agents").then(setAgents).catch(() => {});
   }, [load]);
 
-  const today = new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
   const actions = data?.actions ?? [];
   const notes = data?.notes ?? [];
+  const empty = data !== null && data.count === 0;
 
-  return <>
-    <section className={styles.head}>
-      <div>
-        <p className="eyebrow">TODAY</p>
-        <h2>{actions.length > 0 ? `${actions.length} 件需要你处理` : "今天没有等你的事"}</h2>
-        <p className={styles.copy}>{today} · 邮件更新、任务结果和物品提醒都会汇总到这里，不用一个个页面翻。</p>
+  return <div className="workspace-scroll">
+    <header className={styles.hero}>
+      <div className={styles.heroText}>
+        <p className={styles.eyebrow}>TODAY · {dateLabel}</p>
+        <h1>{actions.length > 0 ? `${actions.length} 件需要你处理` : "今天没有等你的事"}</h1>
+        <p className={styles.sub}>邮件自动更新、后台任务和物品库存的变化都汇总在这里，不用逐个页面翻。</p>
       </div>
-      <div className={styles.headActions}>
-        <button className="ghost" onClick={() => void load()} disabled={loading}>
-          <Icon name="refresh" size={14} /> 刷新
+      <div className={styles.heroActions}>
+        <button className={styles.ghost} onClick={() => void load()} disabled={loading}>
+          <Icon name="refresh" size={15} /> {loading ? "刷新中" : "刷新"}
         </button>
-        <button className="primary" onClick={() => onNavigate("chat")}>问一句</button>
+        <button className={styles.primary} onClick={() => onNavigate("chat")}>
+          <Icon name="sparkles" size={15} /> 问一句
+        </button>
       </div>
-    </section>
+    </header>
 
-    {error && <p className={styles.error}><Icon name="alert" size={15} /> {error}</p>}
+    {error && <div className={styles.alert}><Icon name="alert" size={15} /> {error}</div>}
 
-    {actions.length > 0 && <section className={`workspace-card ${styles.panel}`}>
-      <div className={styles.panelHead}>
-        <h3>需要你处理</h3>
-        <span>{actions.length}</span>
+    {!empty && <div className={styles.stats}>
+      <div className={styles.stat}>
+        <b>{actions.length}</b>
+        <span>待你处理</span>
       </div>
-      {actions.map((item, index) => <button key={`${item.kind}-${index}`} className={styles.row} onClick={() => onNavigate(item.target)}>
-        <span className={`${styles.icon} ${styles.action}`}><Icon name={kindIcon[item.kind] || "alert"} size={16} /></span>
-        <span className={styles.body}>
-          <b>{item.title}</b>
-          <small>{item.detail}</small>
-        </span>
-        <span className={styles.meta}>
-          <small>{kindLabel[item.kind] || item.kind}</small>
-          <small>{when(item.created_at)}</small>
-        </span>
-        <Icon name="chevron" size={15} />
-      </button>)}
-    </section>}
-
-    {notes.length > 0 && <section className={`workspace-card ${styles.panel}`}>
-      <div className={styles.panelHead}>
-        <h3>最近变化</h3>
-        <span>{notes.length}</span>
+      <div className={styles.stat}>
+        <b>{notes.length}</b>
+        <span>最近变化</span>
       </div>
-      {notes.map((item, index) => <button key={`${item.kind}-n-${index}`} className={styles.row} onClick={() => onNavigate(item.target)}>
-        <span className={styles.icon}><Icon name={kindIcon[item.kind] || "sparkles"} size={16} /></span>
-        <span className={styles.body}>
-          <b>{item.title}</b>
-          <small>{item.detail}</small>
-        </span>
-        <span className={styles.meta}>
-          <small>{kindLabel[item.kind] || item.kind}</small>
-          <small>{when(item.created_at)}</small>
-        </span>
-        <Icon name="chevron" size={15} />
-      </button>)}
-    </section>}
+      <div className={styles.stat}>
+        <b>{notes.filter((item) => item.kind === "household").length}</b>
+        <span>低库存</span>
+      </div>
+    </div>}
 
-    {data && data.count === 0 && <section className={styles.empty}>
-      <Icon name="check" size={22} />
-      <h3>没有待处理的事</h3>
+    {empty && <section className={styles.empty}>
+      <span className={styles.emptyIcon}><Icon name="check" size={22} /></span>
+      <h2>没有待处理的事</h2>
       <p>可以让 Fei 做点什么：整理简历、记一件家里的东西，或者查一份岗位。</p>
       <div className={styles.emptyActions}>
-        <button className="primary" onClick={() => onNavigate("chat")}>打开对话</button>
-        <button className="ghost" onClick={() => onNavigate("items")}>记一件物品</button>
+        <button className={styles.primary} onClick={() => onNavigate("chat")}>打开对话</button>
+        <button className={styles.ghost} onClick={() => onNavigate("items")}>记一件物品</button>
       </div>
     </section>}
-  </>;
+
+    {!empty && <div className={styles.grid}>
+      <section className={styles.panel}>
+        <header className={styles.panelHead}>
+          <h2>需要你处理</h2>
+          <span>{actions.length}</span>
+        </header>
+        {actions.length === 0 && <div className={styles.done}><Icon name="check" size={16} /> 都处理完了</div>}
+        <div className={styles.rows}>
+          {actions.map((item, index) => <button key={`${item.kind}-${index}`} className={styles.row} onClick={() => onNavigate(item.target)}>
+            <span className={`${styles.tile} ${styles.tileAction}`}>
+              <Icon name={kindIcon[item.kind] || "alert"} size={17} />
+            </span>
+            <span className={styles.body}>
+              <b>{item.title}</b>
+              <small>{item.detail}</small>
+            </span>
+            <span className={styles.meta}>
+              <small>{kindLabel[item.kind] || item.kind}</small>
+              <small>{when(item.created_at)}</small>
+            </span>
+            <Icon name="chevron" size={16} />
+          </button>)}
+        </div>
+      </section>
+
+      <aside className={styles.panel}>
+        <header className={styles.panelHead}>
+          <h2>最近变化</h2>
+          <span>{notes.length}</span>
+        </header>
+        {notes.length === 0 && <p className={styles.placeholder}>最近没有自动更新。</p>}
+        <div className={styles.rows}>
+          {notes.map((item, index) => <button key={`${item.kind}-n-${index}`} className={styles.row} onClick={() => onNavigate(item.target)}>
+            <span className={styles.tile}>
+              <Icon name={kindIcon[item.kind] || "sparkles"} size={16} />
+            </span>
+            <span className={styles.body}>
+              <b>{item.title}</b>
+              <small>{item.detail}</small>
+            </span>
+            <span className={styles.meta}>
+              <small>{when(item.created_at)}</small>
+            </span>
+          </button>)}
+        </div>
+      </aside>
+    </div>}
+
+    {agents.length > 0 && <section className={styles.agents}>
+      <div className={styles.agentsGrid}>
+        {agents.map((agent) => <button key={agent.id} className={styles.agentCard}
+          onClick={() => onNavigate(agent.id === "household" ? "items" : "job/overview")}>
+          <span className={styles.agentTop}>
+            <b>{agent.title}</b>
+            <Icon name="arrow" size={15} />
+          </span>
+          <small>{agent.description}</small>
+        </button>)}
+        <button className={styles.agentCard} onClick={() => onNavigate("runs")}>
+          <span className={styles.agentTop}>
+            <b>运行记录</b>
+            <Icon name="arrow" size={15} />
+          </span>
+          <small>每一次执行的计划、工具调用与结果</small>
+        </button>
+      </div>
+    </section>}
+  </div>;
 }

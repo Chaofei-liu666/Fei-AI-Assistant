@@ -55,7 +55,11 @@ export function AppShell() {
       <div className="context-brand"><div><strong>Fei</strong><span>Intelligence workspace</span></div><span className="desktop-chip">LOCAL</span></div>
       {view === "today" ? <>
         <div className="context-title"><p>TODAY</p><h2>今天</h2></div>
-        <div className="context-section"><p>汇总来源</p><div><span className="status-orb" /><small>邮件自动更新</small></div><div><span className="status-orb amber" /><small>失败任务与待确认</small></div><div><span className="status-orb" /><small>低库存物品</small></div></div>
+        <nav className="context-nav">
+          <button onClick={() => setView("chat")}><Icon name="chat" size={16} /><span>主对话</span></button>
+          <button onClick={() => setView("items")}><Icon name="box" size={16} /><span>物品清单</span></button>
+          <button onClick={() => setView("runs")}><Icon name="clock" size={16} /><span>运行记录</span></button>
+        </nav>
       </> : view === "job" ? <>
         <div className="context-title"><p>CAREER WORKSPACE</p><h2>求职工作台</h2></div>
         <nav className="context-nav">{careerNav.map(([id,label,icon]) => <button key={id} className={jobTab === id ? "active" : ""} onClick={() => setJobTab(id)}><Icon name={icon} size={16} /><span>{label}</span>{id === "mail" && <i />}</button>)}</nav>

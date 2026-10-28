@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
 import { Icon } from "./Icon";
 import styles from "./HouseholdWorkspace.module.css";
 
@@ -56,19 +57,8 @@ const actionLabels: Record<string, string> = {
   undo: "撤销",
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
-  if (!response.ok) {
-    let detail = response.statusText;
-    try {
-      const body = await response.json();
-      detail = body.detail || detail;
-    } catch {
-      /* keep status text */
-    }
-    throw new Error(detail);
-  }
-  return response.json() as Promise<T>;
+function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return api<T>(path, init);
 }
 
 export function HouseholdWorkspace() {
@@ -274,7 +264,7 @@ export function HouseholdWorkspace() {
     await refresh(nextQuery, nextPlace);
   });
 
-  return <>
+  return <div className="workspace-scroll">
     <section className={styles.head}>
       <div>
         <p className="eyebrow">HOUSEHOLD AGENT</p>
@@ -427,5 +417,5 @@ export function HouseholdWorkspace() {
             </>}
       </aside>
     </div>
-  </>;
+  </div>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { Icon } from "./Icon";
 import styles from "./RunsWorkspace.module.css";
 
@@ -39,10 +40,8 @@ const kindTone: Record<string, string> = {
   note: "toneNote",
 };
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(response.statusText);
-  return response.json() as Promise<T>;
+function getJson<T>(path: string): Promise<T> {
+  return api<T>(path);
 }
 
 function time(value: string | null): string {
@@ -75,7 +74,7 @@ export function RunsWorkspace() {
     }
   };
 
-  return <>
+  return <div className="workspace-scroll">
     <section className={styles.head}>
       <div>
         <p className="eyebrow">RUNS</p>
@@ -132,5 +131,5 @@ export function RunsWorkspace() {
             </>}
       </section>
     </div>
-  </>;
+  </div>;
 }
