@@ -6,6 +6,8 @@ import { HouseholdWorkspace } from "./HouseholdWorkspace";
 import { JobWorkspace } from "./JobWorkspace";
 import { RunsWorkspace } from "./RunsWorkspace";
 import { SettingsPanel } from "./SettingsPanel";
+import { threads } from "@/lib/threads";
+import { ThreadList } from "./ThreadList";
 import { TodayWorkspace } from "./TodayWorkspace";
 import { Icon, type IconName } from "./Icon";
 
@@ -54,13 +56,15 @@ export function AppShell() {
         <div className="context-title"><p>CAREER</p><h2>求职工作台</h2></div>
         <nav className="context-nav">{careerNav.map(([id, label, icon]) => <button key={id} className={jobTab === id ? "active" : ""} onClick={() => setJobTab(id)}><Icon name={icon} size={16} /><span>{label}</span></button>)}</nav>
       </> : <>
-        <button className="new-session" onClick={() => setView("chat")}><Icon name="plus" size={15} /> 新对话 <kbd>Ctrl N</kbd></button>
+        <button className="new-session" onClick={() => { threads.setActive(null); setView("chat"); }}><Icon name="plus" size={15} /> 新对话 <kbd>Ctrl N</kbd></button>
         <nav className="side-nav">
           {primaryNav.map(([id, label, icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
             <Icon name={icon} size={17} /><span>{label}</span>
             {id === "today" && <em />}
           </button>)}
         </nav>
+        <p className="side-label">最近</p>
+        <ThreadList onOpen={() => setView("chat")} />
       </>}
 
       <div className="side-bottom">

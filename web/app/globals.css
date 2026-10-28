@@ -831,3 +831,95 @@ progress { width: 100%; height: 4px; accent-color: var(--accent); }
 .composer-bar .composer-controls {
   margin-right: 0;
 }
+
+/* thread history */
+.side-label {
+  margin: 20px 8px 6px;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.thread-list {
+  display: grid;
+  gap: 1px;
+  overflow: auto;
+  max-height: 40vh;
+}
+
+.thread-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  color: var(--muted);
+}
+
+.thread-item:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.thread-item.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.thread-title {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-time {
+  color: var(--faint);
+  font-size: 10.5px;
+}
+
+.side-empty {
+  margin: 0 8px;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* depth: layered gradients instead of flat fills */
+body {
+  background:
+    radial-gradient(1200px 520px at 18% -12%, rgba(111, 154, 124, .18), transparent 60%),
+    radial-gradient(900px 420px at 88% 4%, rgba(214, 178, 120, .16), transparent 65%),
+    radial-gradient(700px 380px at 60% 100%, rgba(111, 154, 124, .08), transparent 70%),
+    var(--bg);
+}
+
+.context-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%),
+    var(--surface-2);
+}
+
+.workspace-topbar {
+  background: linear-gradient(180deg, rgba(255, 253, 249, .92), rgba(255, 253, 249, .62));
+}
+
+.composer {
+  background: linear-gradient(180deg, #fffefa 0%, #fbf7ee 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .9), 0 16px 40px rgba(96, 82, 48, .12);
+}
+
+.send-button {
+  background: linear-gradient(135deg, #7fae8a, #5c8570);
+  box-shadow: 0 6px 16px rgba(92, 133, 112, .28);
+}
+
+.capability-card,
+.digest,
+.digest-strip {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, 0));
+}

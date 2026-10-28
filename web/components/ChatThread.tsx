@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useAuiState } from "@assistant-ui/react";
 import { api } from "@/lib/api";
+import { threads } from "@/lib/threads";
 import { Icon, type IconName } from "./Icon";
 
 const jobCapabilities = [
@@ -77,6 +78,17 @@ function ChatComposer({ isJob }: { isJob: boolean }) {
 
 export function ChatThread({ module, onNavigate }: { module: "general" | "job_search"; onNavigate?: (target: string) => void }) {
   const isJob = module === "job_search";
+  const threadMessages = useAuiState((state) => state.thread.messages);
+
+  useEffect(() => {
+    const active = threads.snapshot().active;
+    if (!active) return;
+    const first = (threadMessages ?? []).find((message) => message.role === "user");
+    if (!first) return;
+    const text = first.content.map((part) => (part.type === "text" ? part.text : "")).join(" ").trim();
+    if (text) threads.rename(active, text);
+  }, [threadMessages]);
+
   return <ThreadPrimitive.Root className="thread-root">
     <ThreadPrimitive.Viewport className="thread-viewport">
       <AuiIf condition={(state) => state.thread.isEmpty}>
