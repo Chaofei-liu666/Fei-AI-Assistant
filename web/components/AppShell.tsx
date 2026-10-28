@@ -61,17 +61,19 @@ export function AppShell() {
             {id === "today" && <em />}
           </button>)}
         </nav>
-        <div className="side-hint">
+      </>}
+
+      <div className="side-bottom">
+        {view !== "job" && <div className="side-hint">
           <p>工作方式</p>
           <div><span className="status-orb" /><small>LangGraph Orchestrator 在线</small></div>
           <div><span className="status-orb amber" /><small>写入操作需要你确认</small></div>
-        </div>
-      </>}
-
-      <button className={`side-settings ${view === "settings" ? "active" : ""}`} onClick={() => setView("settings")}>
-        <Icon name="settings" size={17} /><span>设置</span>
-      </button>
-      <div className="context-footer"><div><span className="status-orb" /><b>Local services</b></div><small>127.0.0.1 · 私有工作区</small></div>
+        </div>}
+        <button className={`side-settings ${view === "settings" ? "active" : ""}`} onClick={() => setView("settings")}>
+          <Icon name="settings" size={17} /><span>设置</span>
+        </button>
+        <div className="context-footer"><div><span className="status-orb" /><b>Local services</b></div><small>127.0.0.1 · 私有工作区</small></div>
+      </div>
     </aside>
 
     <main className="workspace-main">

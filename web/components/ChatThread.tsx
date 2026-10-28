@@ -82,6 +82,7 @@ export function ChatThread({ module, onNavigate }: { module: "general" | "job_se
           <div className="suggest-row">{(isJob ? jobCapabilities : generalSuggestions).map(([icon, title, text, prompt]) => <ThreadPrimitive.Suggestion className="suggest-chip" prompt={prompt} key={title} title={text}><Icon name={icon} size={14} /><span>{title}</span></ThreadPrimitive.Suggestion>)}</div>
           <div className="welcome-composer">
             <ChatComposer isJob={isJob} />
+            <ComposerStats />
             <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
           </div>
         </section>
@@ -176,14 +177,20 @@ function ComposerStats() {
     return { turns, steps, tokens, tps };
   }, [messages]);
 
-  if (stats.turns === 0) return null;
   const contextPct = stats.tokens > 0 ? Math.min(100, Math.round((stats.tokens / contextWindow) * 100)) : 0;
 
+  if (stats.turns === 0) {
+    return <div className="composer-meta composer-meta-idle">发送第一条消息后，这里显示轮次、速度、token 与上下文用量</div>;
+  }
+
+  const rate = typeof stats.tps === "number" && stats.tps > 0 ? `${stats.tps.toFixed(0)} tok/s` : "—";
+
   return <div className="composer-meta">
-    <span>↻ {stats.turns} 轮 {stats.steps} 步</span>
-    {typeof stats.tps === "number" && stats.tps > 0 && <span>· {stats.tps.toFixed(0)} tok/s</span>}
-    {stats.tokens > 0 && <span>· {formatTokens(stats.tokens)} tok</span>}
-    {contextPct > 0 && <span>· 上下文 {contextPct}%</span>}
+    <span className="cm-group"><b>{stats.turns}</b> 轮 <i>·</i> <b>{stats.steps}</b> 步 <i>·</i> {rate}</span>
+    <span className="cm-sep" />
+    <span className="cm-group">{formatTokens(stats.tokens)} tok <i>·</i> 缓存 <b title="provider 暂未返回缓存命中">—</b></span>
+    <span className="cm-sep" />
+    <span className="cm-group" title={`上下文窗口 ${contextWindow.toLocaleString()} tokens`}>上下文 <b>{contextPct}%</b></span>
   </div>;
 }
 
