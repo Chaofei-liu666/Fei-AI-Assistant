@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { api } from "@/lib/api";
+import { DEMO_SKIN, skin } from "@/lib/skin";
 
 type Provider = { slot: string; provider: string; base_url?: string; model?: string; config: Record<string, unknown>; configured: boolean; secret_last_four?: string };
 
@@ -9,9 +10,28 @@ export function SettingsPanel() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [notice, setNotice] = useState("");
   const [orch, setOrch] = useState<{ prompt: string; default_prompt: string; customized: boolean } | null>(null);
+  const skinCfg = useSyncExternalStore(skin.subscribe, skin.snapshot, skin.snapshot);
   const refresh = () => api<Provider[]>("/api/settings/providers").then(setProviders).catch((e) => setNotice(e.message));
   useEffect(() => { void refresh(); }, []);
   useEffect(() => { api<{ prompt: string; default_prompt: string; customized: boolean }>("/api/agents/orchestrator/prompt").then(setOrch).catch(() => {}); }, []);
+  const pickSkinFile = (file?: File) => {
+    if (!file) return;
+    const isVideo = file.type.startsWith("video");
+    const limit = isVideo ? 4.5 * 1024 * 1024 : 2.5 * 1024 * 1024;
+    if (file.size > limit) {
+      setNotice(isVideo ? "视频请小于 4.5MB（浏览器 localStorage 限制）" : "图片请小于 2.5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => skin.set({
+      kind: isVideo ? "video" : "image",
+      src: String(reader.result),
+      opacity: skinCfg.opacity,
+      blur: skinCfg.blur,
+    });
+    reader.readAsDataURL(file);
+  };
+
   const saveOrch = async () => {
     if (!orch) return;
     try {
@@ -37,6 +57,23 @@ export function SettingsPanel() {
     try { await api(`/api/settings/providers/${slot}`, { method: "PUT", body: JSON.stringify(payload) }); setNotice("配置已保存到系统凭据库"); refresh(); } catch (error) { setNotice(error instanceof Error ? error.message : "保存失败"); }
   };
   return <div className="workspace-scroll settings"><div className="workspace-heading"><div><h2>设置</h2></div></div>{notice && <div className="notice">{notice}</div>}
+    <section className="workspace-card settings-form">
+      <div><h3>Skin</h3><span className={`status-pill ${skinCfg.kind !== "none" ? "ready" : ""}`}>{skinCfg.kind === "none" ? "未启用" : skinCfg.kind}</span></div>
+      <div className="skin-preview">
+        {skinCfg.src
+          ? skinCfg.kind === "video"
+            ? <video src={skinCfg.src} muted loop autoPlay playsInline />
+            : <img src={skinCfg.src} alt="" />
+          : <p style={{ margin: 0, padding: 12, color: "var(--faint)", fontSize: 12 }}>未选择背景</p>}
+      </div>
+      <div className="skin-row">
+        <input type="file" accept="image/*,video/*" onChange={(event) => pickSkinFile(event.target.files?.[0])} />
+        <button type="button" onClick={() => skin.set({ kind: "image", src: DEMO_SKIN, opacity: skinCfg.opacity, blur: skinCfg.blur })}>使用示例</button>
+        <label>可见度<input type="range" min={0.2} max={0.95} step={0.01} value={skinCfg.opacity} onChange={(event) => skin.set({ ...skinCfg, opacity: Number(event.target.value) })} /></label>
+        <label>模糊<input type="range" min={0} max={40} step={1} value={skinCfg.blur} onChange={(event) => skin.set({ ...skinCfg, blur: Number(event.target.value) })} /></label>
+        <button type="button" onClick={() => skin.clear()}>关闭皮肤</button>
+      </div>
+    </section>
     {orch && <section className="workspace-card settings-form">
       <div><h3>Orchestrator Prompt</h3><span className={`status-pill ${orch.customized ? "ready" : ""}`}>{orch.customized ? "自定义" : "默认"}</span></div>
       <textarea className="prompt-editor" rows={8} value={orch.prompt} onChange={(event) => setOrch({ ...orch, prompt: event.target.value })} />
