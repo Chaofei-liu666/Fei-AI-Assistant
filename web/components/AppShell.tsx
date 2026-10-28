@@ -82,10 +82,10 @@ export function AppShell() {
       </header>
       <div className="workspace-body">
         {view === "today" && <TodayWorkspace onNavigate={navigate} />}
-        {view === "chat" && <FeiAssistant module="general" />}
+        {view === "chat" && <FeiAssistant module="general" onNavigate={navigate} />}
         {view === "items" && <HouseholdWorkspace />}
         {view === "runs" && <RunsWorkspace />}
-        {view === "job" && (jobTab === "assistant" ? <FeiAssistant module="job_search" /> : <JobWorkspace tab={jobTab} onTab={setJobTab} />)}
+        {view === "job" && (jobTab === "assistant" ? <FeiAssistant module="job_search" onNavigate={navigate} /> : <JobWorkspace tab={jobTab} onTab={setJobTab} />)}
         {view === "settings" && <SettingsPanel />}
       </div>
     </main>

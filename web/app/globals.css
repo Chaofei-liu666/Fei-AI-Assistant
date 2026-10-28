@@ -572,3 +572,182 @@ progress { width: 100%; height: 4px; accent-color: var(--accent); }
   background: var(--surface-3);
   color: var(--faint);
 }
+
+/* today digest inside the chat welcome */
+.digest {
+  margin: 0 0 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.digest-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.digest-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.digest-head button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.digest-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+}
+
+.digest-row:first-of-type {
+  border-top: 0;
+}
+
+.digest-row:hover {
+  background: var(--surface-2);
+}
+
+.digest-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.digest-dot.task { background: var(--amber); }
+.digest-dot.mail { background: var(--teal); }
+.digest-dot.household { background: var(--green); }
+
+.digest-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.digest-body b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.digest-body small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* compact digest + suggestion chips */
+.digest-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.digest-strip:hover {
+  border-color: var(--line2);
+  color: var(--ink);
+}
+
+.digest-link {
+  margin-left: auto;
+  color: var(--accent-strong);
+}
+
+.digest-foot {
+  margin: 0;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.suggest-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.suggest-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.suggest-chip svg {
+  color: var(--accent);
+}
+
+.welcome {
+  padding: 5vh 0 20px;
+}
+
+/* empty-state composer sits with the greeting instead of docking to the bottom */
+.welcome-composer {
+  margin-top: 22px;
+}
+
+.welcome-composer .composer {
+  box-shadow: var(--shadow);
+}
+
+.welcome-composer .disclaimer {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.thread-viewport {
+  justify-content: flex-start;
+}
+
+.thread-viewport:has(.welcome) {
+  justify-content: center;
+  padding-bottom: 3vh;
+}

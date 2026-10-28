@@ -17,7 +17,59 @@ const generalSuggestions = [
   ["sparkles", "调用合适模块", "先识别意图，再交给对应 Specialist", "告诉我 Fei 当前可以协助哪些任务，以及会如何选择模块"],
 ] as [IconName, string, string, string][];
 
-export function ChatThread({ module }: { module: "general" | "job_search" }) {
+
+type DigestItem = { kind: string; title: string; detail: string; target: string };
+
+function TodayDigest({ onNavigate }: { onNavigate?: (target: string) => void }) {
+  const [data, setData] = useState<{ count: number; actions: DigestItem[]; notes: DigestItem[] } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api<{ count: number; actions: DigestItem[]; notes: DigestItem[] }>("/api/inbox")
+      .then((payload) => { if (alive) setData(payload); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  if (!data || data.count === 0) return null;
+
+  if (data.actions.length === 0) {
+    const names = data.notes.slice(0, 3).map((item) => item.title.replace(/\s*快用完了$/, "")).join("、");
+    return <button className="digest-strip" onClick={() => onNavigate?.("today")}>
+      <span className="digest-dot" />
+      <span>今天有 {data.count} 件小事{names ? ` · ${names}` : ""}</span>
+      <span className="digest-link">查看 ›</span>
+    </button>;
+  }
+
+  return <div className="digest">
+    <div className="digest-head">
+      <span>需要你处理</span>
+      <span className="digest-count">{data.actions.length}</span>
+      <button onClick={() => onNavigate?.("today")}>全部 ›</button>
+    </div>
+    {data.actions.slice(0, 2).map((item, index) => <button key={`${item.kind}-${index}`} className="digest-row" onClick={() => onNavigate?.(item.target)}>
+      <span className={`digest-dot ${item.kind}`} />
+      <span className="digest-body"><b>{item.title}</b><small>{item.detail}</small></span>
+    </button>)}
+    {data.notes.length > 0 && <p className="digest-foot">另有 {data.notes.length} 条变化，可在“今天”查看</p>}
+  </div>;
+}
+
+function ChatComposer({ isJob }: { isJob: boolean }) {
+  return <ComposerPrimitive.Root className="composer">
+    <ComposerPrimitive.Input className="composer-input" placeholder={isJob ? "询问岗位分析、招聘邮件或面试复盘……" : "告诉 Fei 你要处理什么……"} rows={1} />
+    <div className="composer-actions">
+      <ComposerControls />
+      <span className="permission-chip"><Icon name="lock" size={12} /> 写入需确认</span>
+      <span className="input-tip">Enter 发送 · Shift + Enter 换行</span>
+      <AuiIf condition={(state) => !state.thread.isRunning}><ComposerPrimitive.Send className="send-button">↑</ComposerPrimitive.Send></AuiIf>
+      <AuiIf condition={(state) => state.thread.isRunning}><ComposerPrimitive.Cancel className="send-button stop">■</ComposerPrimitive.Cancel></AuiIf>
+    </div>
+  </ComposerPrimitive.Root>;
+}
+
+export function ChatThread({ module, onNavigate }: { module: "general" | "job_search"; onNavigate?: (target: string) => void }) {
   const isJob = module === "job_search";
   return <ThreadPrimitive.Root className="thread-root">
     <ThreadPrimitive.Viewport className="thread-viewport">
@@ -26,21 +78,22 @@ export function ChatThread({ module }: { module: "general" | "job_search" }) {
           <div className="welcome-logo">F</div><p className="eyebrow">FEI ASSISTANT</p>
           <h2>{isJob ? "把求职过程变成可追溯的工作流" : "今天想先处理什么？"}</h2>
           <p className="welcome-copy">{isJob ? "这里负责求职对话；岗位、投递、邮件和面试数据请在工作区管理。" : "Fei 会处理通用请求，并在任务明确涉及求职时自动调用求职模块。"}</p>
-          <div className="capability-grid">{(isJob ? jobCapabilities : generalSuggestions).map(([icon, title, text, prompt]) => <ThreadPrimitive.Suggestion className="capability-card" prompt={prompt} key={title}><span><Icon name={icon} size={16} /></span><div><strong>{title}</strong><p>{text}</p></div><Icon name="arrow" size={13} /></ThreadPrimitive.Suggestion>)}</div>
+          <TodayDigest onNavigate={onNavigate} />
+          <div className="suggest-row">{(isJob ? jobCapabilities : generalSuggestions).map(([icon, title, text, prompt]) => <ThreadPrimitive.Suggestion className="suggest-chip" prompt={prompt} key={title} title={text}><Icon name={icon} size={14} /><span>{title}</span></ThreadPrimitive.Suggestion>)}</div>
+          <div className="welcome-composer">
+            <ChatComposer isJob={isJob} />
+            <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
+          </div>
         </section>
       </AuiIf>
       <div className="messages"><ThreadPrimitive.Messages>{({ message }) => message.role === "user" ? <UserMessage /> : <AssistantMessage module={module} />}</ThreadPrimitive.Messages></div>
-      <ThreadPrimitive.ViewportFooter className="composer-footer">
-        <ComposerPrimitive.Root className="composer">
-          <ComposerPrimitive.Input className="composer-input" placeholder={isJob ? "询问岗位分析、招聘邮件或面试复盘……" : "告诉 Fei 你要处理什么……"} rows={1} />
-          <div className="composer-actions"><ComposerControls /><span className="permission-chip"><Icon name="lock" size={12} /> 写入需确认</span><span className="input-tip">Enter 发送 · Shift + Enter 换行</span>
-            <AuiIf condition={(state) => !state.thread.isRunning}><ComposerPrimitive.Send className="send-button">↑</ComposerPrimitive.Send></AuiIf>
-            <AuiIf condition={(state) => state.thread.isRunning}><ComposerPrimitive.Cancel className="send-button stop">■</ComposerPrimitive.Cancel></AuiIf>
-          </div>
-        </ComposerPrimitive.Root>
-        <ComposerStats />
-        <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
-      </ThreadPrimitive.ViewportFooter>
+      <AuiIf condition={(state) => !state.thread.isEmpty}>
+        <ThreadPrimitive.ViewportFooter className="composer-footer">
+          <ChatComposer isJob={isJob} />
+          <ComposerStats />
+          <p className="disclaimer">模型只提供分析建议；状态变更和外部操作均需用户确认。</p>
+        </ThreadPrimitive.ViewportFooter>
+      </AuiIf>
     </ThreadPrimitive.Viewport>
   </ThreadPrimitive.Root>;
 }
