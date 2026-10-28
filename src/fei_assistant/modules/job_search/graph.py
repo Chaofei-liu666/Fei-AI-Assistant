@@ -8,15 +8,22 @@ from langchain.messages import AIMessage, AnyMessage, SystemMessage
 from langchain_core.language_models.chat_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
+from ...career_tools import APPLICATION_TOOLS, JOB_TOOLS, MAIL_TOOLS, OPERATIONS_TOOLS, SCHEDULE_TOOLS
 from ...contracts import ModuleArtifact, ModuleTask
 from ...structured import invoke_structured
 
+Specialist = Literal[
+    "job_intelligence_agent", "application_status_agent", "recruitment_mail_agent",
+    "schedule_management_agent", "crawler_operations_agent", "interview_review_agent", "clarify",
+]
+
 
 class JobIntent(BaseModel):
-    specialist: Literal["job_analysis_agent", "mail_analysis_agent", "interview_review_agent", "clarify"]
+    specialist: Specialist
     reason: str
 
 
@@ -27,52 +34,83 @@ class JobSearchState(TypedDict, total=False):
     artifacts: list[ModuleArtifact]
 
 
-JOB_ROUTER_PROMPT = """你是 Fei 求职模块的任务分发器，只选择一个节点：
-- job_analysis_agent：岗位要求、简历证据、能力缺口、投递准备。
-- mail_analysis_agent：面试邀请、测评、拒信、Offer 或招聘沟通的理解和建议；只能建议，不能更改状态。
-- interview_review_agent：面试记录、回答拆分、优缺点和练习建议。
-- clarify：材料不足，无法判断属于哪个任务。
-不要把普通公司知识或一般分析问题视为求职任务。
-"""
+JOB_ROUTER_PROMPT = """你是 Fei 求职模块的 Supervisor。只选择一个 Specialist：
+- job_intelligence_agent：2027 校招岗位、公司来源、JD、简历证据和能力缺口。
+- application_status_agent：投递记录、事件时间线、官网进度和身份关联。
+- recruitment_mail_agent：招聘邮件、面试邀请、测评、拒信、Offer 和人工确认。
+- schedule_management_agent：招聘日程、截止时间和待办。
+- crawler_operations_agent：岗位抓取、任务状态、恢复和自动化。
+- interview_review_agent：已确认面试文本的逐题复盘。
+- clarify：求职意图明确，但材料不足以选择 Specialist。
+普通公司知识不属于求职模块。不要创建不存在的 Agent 名称。"""
 
-SPECIALIST_PROMPTS = {
-    "job_analysis_agent": """你是 job_analysis_agent。比较岗位要求与用户提供的简历证据，输出要求—证据表、缺口、风险和行动建议。匹配只用高/中/低，不给伪精确分数，不得虚构经历。正式持久化分析由岗位工作区执行。""",
-    "mail_analysis_agent": """你是 mail_analysis_agent。识别面试邀请、测评、拒信、Offer、招聘沟通，说明可能关联的岗位、邮件类型、建议状态和信心依据。你只能生成建议，绝不声称已修改投递状态或邮箱。""",
-    "interview_review_agent": """你是 interview_review_agent。把已确认的面试文本拆分为问题与回答，逐项给出优点、证据不足、结构问题、改进建议和练习题。不得替用户编造回答。正式复盘必须先在工作区确认转写。""",
+SPECIALISTS = {
+    "job_intelligence_agent": {
+        "title": "岗位情报", "kind": "career.job-evidence", "tools": JOB_TOOLS,
+        "prompt": """你是 job_intelligence_agent，只处理已确认的 2027 届正式校招岗位。
+先使用工具读取真实岗位和证据。匹配结果只能使用推荐关注、值得尝试、谨慎投入、不建议以及要求—证据表；禁止给出 0-100 分、成功率或虚构简历经历。""",
+    },
+    "application_status_agent": {
+        "title": "投递时间线", "kind": "career.application-timeline", "tools": APPLICATION_TOOLS,
+        "prompt": """你是 application_status_agent。使用工具读取投递事实和当前阶段。
+不得声称已经修改阶段；官网证据、邮件建议和身份不确定时必须要求用户在工作区确认。官网复核不得把可信阶段降级。""",
+    },
+    "recruitment_mail_agent": {
+        "title": "邮件确认", "kind": "career.mail-confirmation", "tools": MAIL_TOOLS,
+        "prompt": """你是 recruitment_mail_agent。工具只提供只读邮件摘要。
+说明邮件类型、可能关联的投递和建议阶段；不得发送、删除邮件、改变已读状态或直接更新投递。所有建议必须在邮件工作区确认。""",
+    },
+    "schedule_management_agent": {
+        "title": "日程与待办", "kind": "career.schedule", "tools": SCHEDULE_TOOLS,
+        "prompt": """你是 schedule_management_agent。读取招聘日程和待办，区分明确开始时间、仅截止时间和时间未知的事项。不得虚构日期。页面写入需要用户确认。""",
+    },
+    "crawler_operations_agent": {
+        "title": "任务进度", "kind": "career.task-progress", "tools": OPERATIONS_TOOLS,
+        "prompt": """你是 crawler_operations_agent。读取公司来源和持久任务状态，准确区分完成、部分完成、失败和等待人工操作。状态查询不能启动新任务；抓取和自动化由工作区显式触发。""",
+    },
+    "interview_review_agent": {
+        "title": "面试复盘", "kind": "career.interview-review", "tools": [],
+        "prompt": """你是 interview_review_agent。只有工作区中人工确认的转写文本才能生成正式复盘。
+对当前对话中的面试材料，只能提供结构建议；不得补写候选人没有说过的回答，也不得声称已保存正式报告。""",
+    },
 }
 
 
 def build_job_search_graph(model_provider: Callable[[], BaseChatModel]):
+    all_tools = {tool.name: tool for spec in SPECIALISTS.values() for tool in spec["tools"]}
+
     async def route(state: JobSearchState) -> dict:
         decision = await invoke_structured(model_provider(), JobIntent,
-            [SystemMessage(content=JOB_ROUTER_PROMPT), *state.get("messages", [])]
-        )
+            [SystemMessage(content=JOB_ROUTER_PROMPT), *state.get("messages", [])])
         return {"specialist": decision.specialist}
 
-    def specialist_node(name: str):
-        async def run(state: JobSearchState) -> dict:
-            response = await model_provider().ainvoke(
-                [SystemMessage(content=SPECIALIST_PROMPTS[name]), *state.get("messages", [])]
-            )
-            artifact = ModuleArtifact(
-                id=str(uuid.uuid4()),
-                kind=name.removesuffix("_agent"),
-                title={"job_analysis_agent": "岗位分析", "mail_analysis_agent": "邮件建议", "interview_review_agent": "面试复盘"}[name],
-                payload={"content": str(response.content), "specialist": name},
-            )
-            return {"messages": [response], "artifacts": [artifact]}
-        return run
+    async def specialist(state: JobSearchState) -> dict:
+        name = state["specialist"]
+        spec = SPECIALISTS[name]
+        model = model_provider().bind_tools(spec["tools"]) if spec["tools"] else model_provider()
+        response = await model.ainvoke([SystemMessage(content=spec["prompt"]), *state.get("messages", [])])
+        update: dict = {"messages": [response]}
+        if not getattr(response, "tool_calls", None):
+            update["artifacts"] = [ModuleArtifact(
+                id=str(uuid.uuid4()), kind=spec["kind"], title=spec["title"],
+                payload={"content": str(response.content), "specialist": name, "read_only": True},
+            )]
+        return update
 
     async def clarify(_: JobSearchState) -> dict:
-        return {"messages": [AIMessage(content="请补充你希望处理的是岗位/简历匹配、招聘邮件，还是已确认文本的面试复盘。")]}
+        return {"messages": [AIMessage(content="请说明你要处理岗位、投递进度、招聘邮件、日程、抓取任务，还是已确认文本的面试复盘。")]}
 
     builder = StateGraph(JobSearchState)
     builder.add_node("router", route)
-    for name in SPECIALIST_PROMPTS:
-        builder.add_node(name, specialist_node(name))
-        builder.add_edge(name, END)
+    builder.add_node("specialist", specialist)
+    builder.add_node("tools", ToolNode(list(all_tools.values())))
     builder.add_node("clarify", clarify)
-    builder.add_edge("clarify", END)
     builder.add_edge(START, "router")
-    builder.add_conditional_edges("router", lambda state: state["specialist"], {**{name: name for name in SPECIALIST_PROMPTS}, "clarify": "clarify"})
+    builder.add_conditional_edges("router", lambda state: "clarify" if state["specialist"] == "clarify" else "specialist",
+                                  {"clarify": "clarify", "specialist": "specialist"})
+    builder.add_conditional_edges("specialist",
+        lambda state: "tools" if getattr(state["messages"][-1], "tool_calls", None) else "done",
+        {"tools": "tools", "done": END})
+    builder.add_edge("tools", "specialist")
+    builder.add_edge("clarify", END)
     return builder.compile()

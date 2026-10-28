@@ -10,3 +10,6 @@ web/.next/
 web/node_modules/
 web/.env.local
 web/tsconfig.tsbuildinfo
+desktop/node_modules/
+desktop/dist/
+desktop/tsconfig.tsbuildinfo

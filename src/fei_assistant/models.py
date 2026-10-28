@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -51,6 +51,24 @@ class Document(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(default=1)
 
 
+class CandidateProfile(Base, TimestampMixin):
+    __tablename__ = "candidate_profiles"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), unique=True, index=True)
+    document_version: Mapped[int]
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    degree: Mapped[str | None] = mapped_column(String(100))
+    job_type: Mapped[str | None] = mapped_column(String(100))
+    target_directions: Mapped[list[str]] = mapped_column(JSON, default=list)
+    title_keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
+    excluded_title_keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
+    skills: Mapped[list[str]] = mapped_column(JSON, default=list)
+    project_evidence: Mapped[list[str]] = mapped_column(JSON, default=list)
+    supporting_skills: Mapped[list[str]] = mapped_column(JSON, default=list)
+    learning_targets: Mapped[list[str]] = mapped_column(JSON, default=list)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class Artifact(Base, TimestampMixin):
     __tablename__ = "artifacts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
@@ -69,6 +87,17 @@ class JobPosting(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(Text)
     source_url: Mapped[str | None] = mapped_column(String(1000))
     notes: Mapped[str | None] = mapped_column(Text)
+    city: Mapped[str | None] = mapped_column(String(120), index=True)
+    cohort: Mapped[int] = mapped_column(Integer, default=2027, index=True)
+    cohort_status: Mapped[str] = mapped_column(String(30), default="confirmed", index=True)
+    recruitment_track: Mapped[str] = mapped_column(String(30), default="campus", index=True)
+    batch: Mapped[str] = mapped_column(String(30), default="formal", index=True)
+    source_kind: Mapped[str] = mapped_column(String(50), default="manual", index=True)
+    source_ref: Mapped[str | None] = mapped_column(String(500), index=True)
+    jd_status: Mapped[str] = mapped_column(String(30), default="complete", index=True)
+    availability_status: Mapped[str] = mapped_column(String(30), default="active", index=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     analyses: Mapped[list[JobAnalysis]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 
@@ -82,6 +111,12 @@ class JobAnalysis(Base, TimestampMixin):
     model: Mapped[str] = mapped_column(String(200))
     prompt_version: Mapped[str] = mapped_column(String(40))
     match_level: Mapped[str] = mapped_column(String(20))
+    evidence_level: Mapped[str] = mapped_column(String(20), default="insufficient", index=True)
+    analysis_version: Mapped[str] = mapped_column(String(40), default="career-evidence-v1")
+    content_fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    profile_fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    direct_core_count: Mapped[int] = mapped_column(Integer, default=0)
+    missing_core_count: Mapped[int] = mapped_column(Integer, default=0)
     result: Mapped[dict[str, Any]] = mapped_column(JSON)
     job: Mapped[JobPosting] = relationship(back_populates="analyses")
 
@@ -91,6 +126,10 @@ class Application(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     job_id: Mapped[str] = mapped_column(ForeignKey("job_postings.id"), unique=True, index=True)
     status: Mapped[str] = mapped_column(String(30), index=True)
+    company_name: Mapped[str | None] = mapped_column(String(200), index=True)
+    job_title: Mapped[str | None] = mapped_column(String(200), index=True)
+    record_url: Mapped[str | None] = mapped_column(String(2000))
+    source: Mapped[str] = mapped_column(String(40), default="manual")
     events: Mapped[list[ApplicationEvent]] = relationship(back_populates="application", cascade="all, delete-orphan")
 
 
@@ -102,6 +141,7 @@ class ApplicationEvent(Base):
     to_status: Mapped[str] = mapped_column(String(30))
     source: Mapped[str] = mapped_column(String(40), default="user")
     note: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     application: Mapped[Application] = relationship(back_populates="events")
 
@@ -144,6 +184,8 @@ class Interview(Base, TimestampMixin):
     __tablename__ = "interviews"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     job_id: Mapped[str | None] = mapped_column(ForeignKey("job_postings.id"), index=True)
+    application_id: Mapped[str | None] = mapped_column(ForeignKey("applications.id"), index=True)
+    job_title: Mapped[str | None] = mapped_column(String(200))
     company: Mapped[str] = mapped_column(String(200))
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     round: Mapped[str | None] = mapped_column(String(100))
@@ -186,3 +228,60 @@ class BackgroundTask(Base, TimestampMixin):
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     attempts: Mapped[int] = mapped_column(default=0)
     error: Mapped[str | None] = mapped_column(Text)
+
+
+class CompanySource(Base, TimestampMixin):
+    __tablename__ = "company_sources"
+    __table_args__ = (UniqueConstraint("company", "entry_url", name="uq_company_source_entry"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    company: Mapped[str] = mapped_column(String(200), index=True)
+    entry_url: Mapped[str] = mapped_column(String(2000))
+    source_kind: Mapped[str] = mapped_column(String(50), default="official")
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    job_count: Mapped[int] = mapped_column(Integer, default=0)
+    incomplete_jd_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class ScheduleItem(Base, TimestampMixin):
+    __tablename__ = "schedule_items"
+    __table_args__ = (UniqueConstraint("source", "source_ref", name="uq_schedule_source_ref"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    application_id: Mapped[str | None] = mapped_column(ForeignKey("applications.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    item_type: Mapped[str] = mapped_column(String(40), index=True)
+    event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    source: Mapped[str] = mapped_column(String(40), default="manual")
+    source_ref: Mapped[str] = mapped_column(String(200))
+    note: Mapped[str | None] = mapped_column(Text)
+
+
+class Automation(Base, TimestampMixin):
+    __tablename__ = "automations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String(200))
+    task_kind: Mapped[str] = mapped_column(String(60), index=True)
+    schedule_time: Mapped[str] = mapped_column(String(5))
+    timezone: Mapped[str] = mapped_column(String(80), default="Asia/Shanghai")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(30))
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class BrowserReview(Base, TimestampMixin):
+    __tablename__ = "browser_reviews"
+    __table_args__ = (UniqueConstraint("operation_id", name="uq_browser_review_operation"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    operation_id: Mapped[str] = mapped_column(String(64), index=True)
+    application_id: Mapped[str] = mapped_column(ForeignKey("applications.id", ondelete="CASCADE"), index=True)
+    page_url: Mapped[str] = mapped_column(String(2000))
+    observed_status: Mapped[str | None] = mapped_column(String(50))
+    confidence: Mapped[float] = mapped_column(Float, default=0)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    requires_user_action: Mapped[bool] = mapped_column(Boolean, default=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)

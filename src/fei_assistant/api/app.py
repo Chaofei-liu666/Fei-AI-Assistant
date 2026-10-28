@@ -47,19 +47,22 @@ from ..secrets import SecretStore, secret_metadata
 from ..services import analyze_job, change_application_status, confirm_mail_suggestion, review_interview
 from ..storage import ObjectStorage
 from ..tasks import TaskManager
+from .career import router as career_router
 
 
 task_manager = TaskManager()
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(application: FastAPI):
+    application.state.task_manager = task_manager
     task_manager.start()
     yield
     task_manager.shutdown()
 
 
 app = FastAPI(title="Fei Assistant API", version="0.1.0", lifespan=lifespan)
+app.include_router(career_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
@@ -371,7 +374,7 @@ def confirm_suggestion(suggestion_id: str, payload: MailSuggestionConfirm, db: S
 def create_interview(payload: InterviewCreate, db: Session = Depends(get_db)) -> dict:
     interview = Interview(**payload.model_dump(), transcript_confirmed=False)
     db.add(interview); db.commit(); db.refresh(interview)
-    return _json(interview, "id", "job_id", "company", "scheduled_at", "round", "outcome", "notes", "transcript", "transcript_confirmed", "created_at")
+    return _json(interview, "id", "job_id", "application_id", "company", "job_title", "scheduled_at", "round", "outcome", "notes", "transcript", "transcript_confirmed", "created_at")
 
 
 @app.get("/api/interviews")
@@ -379,7 +382,7 @@ def list_interviews(db: Session = Depends(get_db)) -> list[dict]:
     result = []
     for interview in db.scalars(select(Interview).order_by(Interview.created_at.desc())).all():
         latest = db.scalar(select(ReviewReport).where(ReviewReport.interview_id == interview.id).order_by(ReviewReport.created_at.desc()).limit(1))
-        result.append({**_json(interview, "id", "job_id", "company", "scheduled_at", "round", "outcome", "notes", "audio_document_id", "transcript", "transcript_confirmed", "created_at"), "latest_review": _json(latest, "id", "result", "model", "prompt_version", "created_at") if latest else None})
+        result.append({**_json(interview, "id", "job_id", "application_id", "company", "job_title", "scheduled_at", "round", "outcome", "notes", "audio_document_id", "transcript", "transcript_confirmed", "created_at"), "latest_review": _json(latest, "id", "result", "model", "prompt_version", "created_at") if latest else None})
     return result
 
 

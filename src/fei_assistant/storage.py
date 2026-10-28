@@ -55,7 +55,6 @@ class ObjectStorage:
             Key=key,
             Body=data,
             ContentType=content_type,
-            ServerSideEncryption="AES256",
         )
         return StoredObject(key=key, sha256=hashlib.sha256(data).hexdigest(), size=len(data))
 

@@ -6,7 +6,7 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $runtimeDir = Join-Path $projectRoot '.runtime'
 Set-Location $projectRoot
 
-foreach ($name in @('api', 'langgraph', 'web')) {
+foreach ($name in @('desktop', 'api', 'langgraph', 'web')) {
     $pidFile = Join-Path $runtimeDir ($name + '.pid')
     if (Test-Path $pidFile) {
         $savedPid = [int](Get-Content $pidFile -Raw)

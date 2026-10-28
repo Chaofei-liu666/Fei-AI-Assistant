@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from sqlalchemy import select
@@ -58,10 +59,21 @@ async def test_text_provider(config: ProviderConfigInputLike, secret: str) -> di
     structured = await invoke_structured(model, _CapabilityProbe,
         "Return supported=true and message='ok'."
     )
+    vision = False
+    try:
+        vision_message = await model.ainvoke([HumanMessage(content=[
+            {"type": "text", "text": "Reply with exactly: ok"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}},
+        ])])
+        vision = bool(getattr(vision_message, "content", None))
+    except Exception:
+        # Vision is optional. A provider can still pass the required text capabilities.
+        vision = False
     return {
         "streaming": bool(chunks),
         "tool_calling": bool(getattr(tool_message, "tool_calls", [])),
         "json_schema": structured.supported,
+        "vision": vision,
     }
 
 

@@ -7,9 +7,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 
 from .db import SessionLocal
+from .career import crawl_company_source
 from .domain import TaskStatus
 from .mail import Imap163Client, sync_mailbox
-from .models import BackgroundTask, Document, Interview, ProviderConfig, TranscriptionJob
+from .models import Automation, BackgroundTask, CompanySource, Document, Interview, ProviderConfig, TranscriptionJob
 from .providers import build_text_model, get_provider_config
 from .secrets import SecretStore
 from .storage import ObjectStorage
@@ -40,6 +41,8 @@ class TaskManager:
                 task.status = TaskStatus.QUEUED.value
                 db.add(task)
                 self.schedule(task.id)
+            for automation in db.scalars(select(Automation)).all():
+                self.register_automation(automation)
             db.commit()
 
     def shutdown(self) -> None:
@@ -62,6 +65,43 @@ class TaskManager:
         db.flush()
         self.schedule(task.id)
         return task
+
+    def register_automation(self, automation: Automation) -> None:
+        job_id = f"automation-{automation.id}"
+        try:
+            self.scheduler.remove_job(job_id)
+        except Exception:
+            pass
+        if not automation.enabled:
+            return
+        hour, minute = (int(part) for part in automation.schedule_time.split(":"))
+        self.scheduler.add_job(
+            self.enqueue_automation,
+            "cron",
+            hour=hour,
+            minute=minute,
+            timezone=automation.timezone,
+            args=[automation.id],
+            id=job_id,
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+
+    async def enqueue_automation(self, automation_id: str) -> None:
+        with SessionLocal() as db:
+            automation = db.get(Automation, automation_id)
+            if not automation or not automation.enabled:
+                return
+            payload = {**(automation.payload or {}), "automation_id": automation.id}
+            if automation.task_kind == "job_discovery" and not payload.get("source_id"):
+                payload["all_sources"] = True
+            self.create(db, automation.task_kind, payload)
+            automation.last_run_at = datetime.now(timezone.utc)
+            automation.last_status = "queued"
+            automation.last_error = None
+            db.add(automation)
+            db.commit()
 
     async def enqueue_periodic_mail_sync(self) -> None:
         with SessionLocal() as db:
@@ -90,6 +130,10 @@ class TaskManager:
                     task.result = await self._mail_sync(db)
                 elif task.kind == "transcription":
                     task.result = await self._transcribe(db, task.payload["interview_id"])
+                elif task.kind == "job_discovery":
+                    task.result = await self._job_discovery(db, task)
+                elif task.kind == "application_review":
+                    task.result = {"requires_user_action": True, "reason": "open applications in the Fei desktop browser"}
                 else:
                     raise ValueError(f"unknown task kind: {task.kind}")
                 task.status = TaskStatus.SUCCEEDED.value
@@ -102,7 +146,32 @@ class TaskManager:
                 task.status = TaskStatus.FAILED.value
                 task.error = str(exc)[:4000]
             db.add(task)
+            automation_id = (task.payload or {}).get("automation_id")
+            if automation_id:
+                automation = db.get(Automation, automation_id)
+                if automation:
+                    automation.last_status = task.status
+                    automation.last_error = task.error
+                    db.add(automation)
             db.commit()
+
+    async def _job_discovery(self, db, task: BackgroundTask) -> dict:
+        if task.payload.get("all_sources"):
+            sources = db.scalars(select(CompanySource).order_by(CompanySource.company)).all()
+        else:
+            source = db.get(CompanySource, task.payload.get("source_id"))
+            sources = [source] if source else []
+        if not sources:
+            raise LookupError("company source not found")
+        results = []
+        total = len(sources)
+        for index, source in enumerate(sources, 1):
+            results.append(await crawl_company_source(db, source))
+            task = db.get(BackgroundTask, task.id)
+            if task:
+                task.progress = int(index / total * 95)
+                db.add(task); db.commit()
+        return {"sources": results}
 
     async def _mail_sync(self, db) -> dict:
         config = get_provider_config(db, "email")

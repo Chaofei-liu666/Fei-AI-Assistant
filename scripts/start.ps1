@@ -9,7 +9,7 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $runtimeDir = Join-Path $projectRoot '.runtime'
 Set-Location $projectRoot
 
-if (-not (Test-Path '.venv\Scripts\fei-api.exe') -or -not (Test-Path 'web\node_modules')) {
+if (-not (Test-Path '.venv\Scripts\fei-api.exe') -or -not (Test-Path 'web\node_modules') -or -not (Test-Path 'desktop\node_modules')) {
     throw 'Dependencies are missing. Run scripts\setup.ps1 first.'
 }
 
@@ -95,10 +95,24 @@ if ($missing.Count -gt 0) {
 }
 
 Write-Host 'Fei 智能助手已启动：' -ForegroundColor Green
-Write-Host '  界面:      http://127.0.0.1:3000'
+Write-Host '  桌面应用:  Fei 智能助手'
+Write-Host '  本地 Web:  http://127.0.0.1:3000'
 Write-Host '  API 文档: http://127.0.0.1:8000/docs'
 Write-Host '  LangGraph: http://127.0.0.1:2024'
 
 if (-not $NoBrowser) {
-    Start-Process 'http://127.0.0.1:3000'
+    $desktopPidFile = Join-Path $runtimeDir 'desktop.pid'
+    $desktopRunning = $false
+    if (Test-Path $desktopPidFile) {
+        $desktopPid = [int](Get-Content $desktopPidFile -Raw)
+        $desktopRunning = $null -ne (Get-Process -Id $desktopPid -ErrorAction SilentlyContinue)
+    }
+    if (-not $desktopRunning) {
+        $desktopOut = Join-Path $runtimeDir 'desktop.log'
+        $desktopError = Join-Path $runtimeDir 'desktop.error.log'
+        $desktopProcess = Start-Process -FilePath $shell -ArgumentList @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runner, '-Service', 'desktop'
+        ) -WorkingDirectory $projectRoot -RedirectStandardOutput $desktopOut -RedirectStandardError $desktopError -WindowStyle Hidden -PassThru
+        Set-Content -LiteralPath $desktopPidFile -Value $desktopProcess.Id
+    }
 }

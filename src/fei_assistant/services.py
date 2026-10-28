@@ -9,11 +9,13 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .career import analysis_fingerprints, resume_fingerprint, sha256_text
 from .domain import ApplicationStatus
 from .models import (
     Application,
     ApplicationEvent,
     Artifact,
+    CandidateProfile,
     Interview,
     JobAnalysis,
     JobPosting,
@@ -21,12 +23,13 @@ from .models import (
     ReviewReport,
 )
 from .providers import get_provider_config
-from .schemas import InterviewReviewOutput, JobAnalysisOutput
+from .schemas import CandidateProfileOutput, InterviewReviewOutput, JobAnalysisOutput
 from .structured import invoke_structured
 from .storage import ObjectStorage
 
 
-JOB_ANALYSIS_PROMPT_VERSION = "job-analysis-v1"
+JOB_ANALYSIS_PROMPT_VERSION = "career-evidence-v2"
+PROFILE_PROMPT_VERSION = "candidate-profile-v1"
 INTERVIEW_REVIEW_PROMPT_VERSION = "interview-review-v1"
 
 
@@ -54,6 +57,7 @@ def change_application_status(
     *,
     source: str,
     note: str | None = None,
+    evidence: dict | None = None,
 ) -> ApplicationEvent:
     target = status.value if isinstance(status, ApplicationStatus) else status
     event = ApplicationEvent(
@@ -62,6 +66,7 @@ def change_application_status(
         to_status=target,
         source=source,
         note=note,
+        evidence=evidence or {},
     )
     application.status = target
     db.add_all([application, event])
@@ -107,8 +112,33 @@ async def analyze_job(
 ) -> JobAnalysis:
     if not document.extracted_text:
         raise ValueError("resume text is empty")
-    prompt = f"""你是岗位分析 Agent。只使用下面两份材料，禁止推断或编造候选人事实。
-输出高/中/低匹配等级，不要输出百分制。每条证据尽量给出简历原文短句；没有证据就标记 missing。
+    profile = db.scalar(select(CandidateProfile).where(CandidateProfile.document_id == document.id))
+    if profile is None or not profile.confirmed:
+        raise ValueError("candidate profile must be generated and confirmed before analysis")
+    content_fingerprint, profile_fingerprint = analysis_fingerprints(job, profile)
+    config = get_provider_config(db, "text")
+    provider_kind = config.config.get("provider", "unknown")
+    model_name = config.model or "unknown"
+    existing = db.scalar(select(JobAnalysis).where(
+        JobAnalysis.job_id == job.id,
+        JobAnalysis.content_fingerprint == content_fingerprint,
+        JobAnalysis.profile_fingerprint == profile_fingerprint,
+        JobAnalysis.prompt_version == JOB_ANALYSIS_PROMPT_VERSION,
+        JobAnalysis.analysis_version == "career-evidence-v2",
+        JobAnalysis.provider_kind == provider_kind,
+        JobAnalysis.model == model_name,
+    ).order_by(JobAnalysis.created_at.desc()).limit(1))
+    if existing is not None:
+        return existing
+    prompt = f"""你是严格的校招岗位证据审计员。岗位已经通过 2027 届正式校招的确定性筛选。
+只使用下面两份材料，禁止推断或编造候选人事实，不得输出 0-100 分或成功概率。
+evidence_level 只能是 direct、partial、adjacent、insufficient：
+- direct：岗位核心要求存在直接、具体的简历事实；
+- partial：部分核心要求有直接证据，同时存在明确缺口；
+- adjacent：只有相邻、可迁移证据；
+- insufficient：没有足够候选人证据。
+每条要求输出 direct、adjacent 或 missing，并标记 core、supporting 或 basic。
+直接或相邻证据必须引用候选人材料中的具体事实，没有证据就使用 missing。
 
 公司：{job.company}
 职位：{job.title}
@@ -119,15 +149,26 @@ JD：
 {document.extracted_text}
 """
     result = await invoke_structured(model, JobAnalysisOutput, prompt)
-    config = get_provider_config(db, "text")
+    direct_core_count = sum(
+        row.assessment == "direct" and row.requirement_type == "core"
+        for row in result.evidence_table
+    )
+    missing_core_count = len(result.missing_core_requirements)
+    match_level = {"direct": "high", "partial": "medium", "adjacent": "low", "insufficient": "low"}[result.evidence_level]
     analysis = JobAnalysis(
         job_id=job.id,
         document_id=document.id,
         document_version=document.version,
-        provider_kind=config.config.get("provider", "unknown"),
-        model=config.model or "unknown",
+        provider_kind=provider_kind,
+        model=model_name,
         prompt_version=JOB_ANALYSIS_PROMPT_VERSION,
-        match_level=result.match_level.value,
+        match_level=match_level,
+        evidence_level=result.evidence_level,
+        analysis_version="career-evidence-v2",
+        content_fingerprint=content_fingerprint,
+        profile_fingerprint=profile_fingerprint,
+        direct_core_count=direct_core_count,
+        missing_core_count=missing_core_count,
         result=result.model_dump(mode="json"),
     )
     db.add(analysis)
@@ -139,6 +180,45 @@ JD：
         {"job_id": job.id, "analysis_id": analysis.id, **result.model_dump(mode="json")},
     )
     return analysis
+
+
+async def build_candidate_profile(
+    db: Session, model: BaseChatModel, document: Any
+) -> CandidateProfile:
+    if not document.extracted_text:
+        raise ValueError("resume text is empty")
+    config = get_provider_config(db, "text")
+    fingerprint = sha256_text(":".join([
+        resume_fingerprint(document),
+        config.config.get("provider", "unknown"),
+        config.model or "unknown",
+        PROFILE_PROMPT_VERSION,
+    ]))
+    existing = db.scalar(select(CandidateProfile).where(CandidateProfile.document_id == document.id))
+    if existing is not None and existing.fingerprint == fingerprint:
+        return existing
+    result = await invoke_structured(model, CandidateProfileOutput, f"""你是候选人简历事实提取器。
+只提取简历明确写出的学历、求职方向、技能和项目事实，不推断熟练度，不把学习目标写成已掌握技能。
+title_keywords 必须是适合在岗位标题中检索的短词；excluded_title_keywords 只放用户明确不考虑的方向。
+简历：
+{document.extracted_text}
+""")
+    profile = existing or CandidateProfile(document_id=document.id, document_version=document.version, fingerprint=fingerprint)
+    profile.document_version = document.version
+    profile.fingerprint = fingerprint
+    profile.degree = result.degree
+    profile.job_type = result.job_type
+    profile.target_directions = result.target_directions
+    profile.title_keywords = result.title_keywords
+    profile.excluded_title_keywords = result.excluded_title_keywords
+    profile.skills = result.skills
+    profile.project_evidence = result.project_evidence
+    profile.supporting_skills = result.supporting_skills
+    profile.learning_targets = result.learning_targets
+    profile.confirmed = False
+    db.add(profile)
+    db.flush()
+    return profile
 
 
 async def review_interview(

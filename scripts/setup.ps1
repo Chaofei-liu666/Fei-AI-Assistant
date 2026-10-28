@@ -30,4 +30,12 @@ finally {
     Pop-Location
 }
 
+Push-Location desktop
+try {
+    npm install --registry=$NpmRegistry
+}
+finally {
+    Pop-Location
+}
+
 Write-Host 'Fei dependencies are ready.' -ForegroundColor Green

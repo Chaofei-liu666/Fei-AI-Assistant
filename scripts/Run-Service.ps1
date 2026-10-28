@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('api', 'langgraph', 'web')]
+    [ValidateSet('api', 'langgraph', 'web', 'desktop')]
     [string]$Service
 )
 
@@ -19,5 +19,9 @@ switch ($Service) {
     'web' {
         Set-Location (Join-Path $projectRoot 'web')
         npm run dev
+    }
+    'desktop' {
+        Set-Location (Join-Path $projectRoot 'desktop')
+        npm start
     }
 }

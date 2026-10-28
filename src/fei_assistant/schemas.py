@@ -16,17 +16,36 @@ class RouteDecision(BaseModel):
 class EvidenceRow(BaseModel):
     requirement: str
     evidence: str | None = None
-    assessment: Literal["matched", "partial", "missing"]
+    assessment: Literal["direct", "adjacent", "missing"]
+    requirement_type: Literal["core", "supporting", "basic"] = "supporting"
     source_quote: str | None = None
 
 
 class JobAnalysisOutput(BaseModel):
-    match_level: MatchLevel
+    evidence_level: Literal["direct", "partial", "adjacent", "insufficient"]
     summary: str
     evidence_table: list[EvidenceRow]
+    missing_core_requirements: list[str]
+    advantages: list[str]
     gaps: list[str]
     risks: list[str]
     preparation_actions: list[str]
+
+
+class CandidateProfileOutput(BaseModel):
+    degree: str | None = None
+    job_type: str | None = None
+    target_directions: list[str] = Field(default_factory=list)
+    title_keywords: list[str] = Field(default_factory=list)
+    excluded_title_keywords: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    project_evidence: list[str] = Field(default_factory=list)
+    supporting_skills: list[str] = Field(default_factory=list)
+    learning_targets: list[str] = Field(default_factory=list)
+
+
+class CandidateProfileUpdate(CandidateProfileOutput):
+    confirmed: bool = True
 
 
 class MailAnalysisOutput(BaseModel):
@@ -80,6 +99,10 @@ class JobCreate(BaseModel):
     description: str = Field(min_length=1)
     source_url: HttpUrl | None = None
     notes: str | None = None
+    city: str | None = None
+    cohort: Literal[2027] = 2027
+    recruitment_track: Literal["campus"] = "campus"
+    batch: Literal["early", "formal"] = "formal"
 
 
 class JobAnalysisRequest(BaseModel):
@@ -104,7 +127,9 @@ class MailSuggestionConfirm(BaseModel):
 
 class InterviewCreate(BaseModel):
     job_id: str | None = None
+    application_id: str | None = None
     company: str = Field(min_length=1, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
     scheduled_at: datetime | None = None
     round: str | None = None
     outcome: str | None = None
@@ -120,3 +145,44 @@ class TranscriptionRequest(BaseModel):
     language_hints: list[str] = Field(default_factory=lambda: ["zh", "en"])
     vocabulary: list[str] = Field(default_factory=list)
     diarization: bool = True
+
+
+class CompanySourceCreate(BaseModel):
+    company: str = Field(min_length=1, max_length=200)
+    entry_url: HttpUrl
+    source_kind: Literal["official", "offerbiu", "manual"] = "official"
+
+
+class ScheduleItemCreate(BaseModel):
+    application_id: str | None = None
+    title: str = Field(min_length=1, max_length=300)
+    item_type: Literal["assessment", "written", "interview", "offer", "deadline", "todo"]
+    event_date: datetime | None = None
+    deadline_at: datetime | None = None
+    note: str | None = None
+
+
+class AutomationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    task_kind: Literal["job_discovery", "mail_sync", "application_review"]
+    schedule_time: str = Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    timezone: str = "Asia/Shanghai"
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class BrowserReviewObservation(BaseModel):
+    operation_id: str = Field(min_length=8, max_length=64)
+    application_id: str
+    page_url: HttpUrl
+    observed_status: ApplicationStatus | None = None
+    confidence: float = Field(ge=0, le=1)
+    page_title: str = Field(default="", max_length=500)
+    visible_text: str = Field(default="", max_length=12000)
+    screenshot_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    login_required: bool = False
+    captcha_required: bool = False
+
+
+class BrowserReviewConfirm(BaseModel):
+    status: ApplicationStatus
+    note: str | None = None
