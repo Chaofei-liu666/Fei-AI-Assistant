@@ -38,7 +38,7 @@ export function SettingsPanel() {
   };
   return <div className="workspace-scroll settings"><div className="workspace-heading"><div><h2>设置</h2></div></div>{notice && <div className="notice">{notice}</div>}
     {orch && <section className="workspace-card settings-form">
-      <div><h3>主 Agent 提示词</h3><span className={`status-pill ${orch.customized ? "ready" : ""}`}>{orch.customized ? "自定义" : "默认"}</span></div>
+      <div><h3>Orchestrator Prompt</h3><span className={`status-pill ${orch.customized ? "ready" : ""}`}>{orch.customized ? "自定义" : "默认"}</span></div>
       <textarea className="prompt-editor" rows={8} value={orch.prompt} onChange={(event) => setOrch({ ...orch, prompt: event.target.value })} />
       <div className="record-actions"><button className="primary" type="button" onClick={() => void saveOrch()}>保存提示词</button>{orch.customized && <button type="button" onClick={() => void resetOrch()}>恢复默认</button>}</div>
     </section>}

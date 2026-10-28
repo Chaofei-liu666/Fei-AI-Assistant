@@ -74,7 +74,7 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
     <header className={styles.head}>
       <div>
         <p className={styles.eyebrow}>AGENTS</p>
-        <h1>子 Agent</h1>
+        <h1>Agents</h1>
       </div>
       <span className={styles.count}>{agents.length} 个</span>
     </header>
@@ -95,7 +95,7 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
             {workspace
               ? <button className={styles.primary} onClick={() => onNavigate(agent.target as string)}>打开工作区</button>
               : <button className={styles.ghost} onClick={() => onNavigate("chat")}>在对话里调用</button>}
-            <button className={styles.linkButton} onClick={() => void openPrompt(agent)}>提示词</button>
+            <button className={styles.linkButton} onClick={() => void openPrompt(agent)}>Prompt</button>
           </div>
         </article>;
       })}

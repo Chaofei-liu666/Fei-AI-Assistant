@@ -29,7 +29,7 @@ const careerNav: [string, string, IconName, string][] = [
 const primaryNav: [View, string, IconName][] = [
   ["chat", "主对话", "chat"],
   ["today", "今天", "dashboard"],
-  ["agents", "子 Agent", "sparkles"],
+  ["agents", "Agents", "sparkles"],
   ["runs", "运行记录", "clock"],
 ];
 
@@ -43,7 +43,7 @@ export function AppShell() {
     if (requested && (allowed as string[]).includes(requested)) setView(requested as View);
   }, []);
   const current = careerNav.find(([id]) => id === jobTab);
-  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "agents" ? "子 Agent" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
+  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "agents" ? "Agents" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
 
   const navigate = (target: string) => {
     const [next, tab] = target.split("/");
