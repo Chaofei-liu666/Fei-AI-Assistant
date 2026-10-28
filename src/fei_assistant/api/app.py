@@ -50,6 +50,7 @@ from ..tasks import TaskManager
 from .agents import router as agents_router
 from .career import router as career_router
 from .household import router as household_router
+from .inbox import router as inbox_router
 from .mail_events import router as mail_events_router
 from .runs import router as runs_router
 
@@ -70,6 +71,7 @@ app.include_router(career_router)
 app.include_router(household_router)
 app.include_router(agents_router)
 app.include_router(mail_events_router)
+app.include_router(inbox_router)
 app.include_router(runs_router)
 app.add_middleware(
     CORSMiddleware,

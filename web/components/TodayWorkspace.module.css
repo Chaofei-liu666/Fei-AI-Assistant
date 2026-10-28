@@ -1,0 +1,158 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.head h2 {
+  margin: 6px 0 8px;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.copy {
+  margin: 0;
+  max-width: 680px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.headActions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--red);
+  background: var(--red-soft);
+  font-size: 13px;
+}
+
+.panel {
+  padding: 6px 0 4px;
+  margin-bottom: 16px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 18px 8px;
+}
+
+.panelHead h3 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.panelHead span {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 18px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--bg);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.icon.action {
+  background: var(--amber-soft);
+  border-color: #efd9b4;
+  color: var(--amber);
+}
+
+.body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.body b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.body small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  flex: none;
+}
+
+.meta small {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 48px 20px;
+  color: var(--muted);
+  text-align: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: 14px;
+}
+
+.empty h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.emptyActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}

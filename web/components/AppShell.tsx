@@ -6,9 +6,10 @@ import { HouseholdWorkspace } from "./HouseholdWorkspace";
 import { JobWorkspace } from "./JobWorkspace";
 import { RunsWorkspace } from "./RunsWorkspace";
 import { SettingsPanel } from "./SettingsPanel";
+import { TodayWorkspace } from "./TodayWorkspace";
 import { Icon, type IconName } from "./Icon";
 
-type View = "chat" | "job" | "items" | "runs" | "settings";
+type View = "today" | "chat" | "job" | "items" | "runs" | "settings";
 const careerNav: [string, string, IconName, string][] = [
   ["overview", "概览", "dashboard", "今天需要关注的事项"],
   ["profile", "候选人画像", "file", "简历事实与求职方向"],
@@ -22,16 +23,23 @@ const careerNav: [string, string, IconName, string][] = [
 ];
 
 export function AppShell() {
-  const [view, setView] = useState<View>("chat");
+  const [view, setView] = useState<View>("today");
   const [jobTab, setJobTab] = useState("overview");
   const current = careerNav.find(([id]) => id === jobTab);
-  const title = view === "job" ? current?.[1] : view === "chat" ? "Fei" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
-  const subtitle = view === "job" ? current?.[3] : view === "chat" ? "你的本地智能工作空间" : view === "items" ? "用一句话记录家里的东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
+  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "Fei" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
+  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "你的本地智能工作空间" : view === "items" ? "用一句话记录家里的东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
+  const navigate = (target: string) => {
+    const [next, tab] = target.split("/");
+    if (next === "items" || next === "runs" || next === "chat" || next === "today") { setView(next as View); return; }
+    setView("job");
+    if (tab) setJobTab(tab);
+  };
 
   return <div className="product-shell">
     <aside className="app-rail">
       <button className="rail-logo" aria-label="Fei 首页" onClick={() => setView("chat")}>F</button>
       <div className="rail-nav">
+        <RailButton label="今天" icon="dashboard" active={view === "today"} onClick={() => setView("today")} />
         <RailButton label="主对话" icon="chat" active={view === "chat"} onClick={() => setView("chat")} />
         <RailButton label="求职工作台" icon="briefcase" active={view === "job"} onClick={() => setView("job")} />
         <RailButton label="物品清单" icon="box" active={view === "items"} onClick={() => setView("items")} />
@@ -45,7 +53,10 @@ export function AppShell() {
 
     <aside className="context-sidebar">
       <div className="context-brand"><div><strong>Fei</strong><span>Intelligence workspace</span></div><span className="desktop-chip">LOCAL</span></div>
-      {view === "job" ? <>
+      {view === "today" ? <>
+        <div className="context-title"><p>TODAY</p><h2>今天</h2></div>
+        <div className="context-section"><p>汇总来源</p><div><span className="status-orb" /><small>邮件自动更新</small></div><div><span className="status-orb amber" /><small>失败任务与待确认</small></div><div><span className="status-orb" /><small>低库存物品</small></div></div>
+      </> : view === "job" ? <>
         <div className="context-title"><p>CAREER WORKSPACE</p><h2>求职工作台</h2></div>
         <nav className="context-nav">{careerNav.map(([id,label,icon]) => <button key={id} className={jobTab === id ? "active" : ""} onClick={() => setJobTab(id)}><Icon name={icon} size={16} /><span>{label}</span>{id === "mail" && <i />}</button>)}</nav>
       </> : view === "chat" ? <>
@@ -71,6 +82,7 @@ export function AppShell() {
     <main className="workspace-main">
       <header className="workspace-topbar"><div><h1>{title}</h1><p>{subtitle}</p></div><button className="command-trigger"><Icon name="search" size={14} /><span>搜索或运行命令</span><kbd>Ctrl K</kbd></button><div className="topbar-actions"><span className="system-state"><i /> 全部服务正常</span><button aria-label="通知"><Icon name="alert" size={16} /></button></div></header>
       <div className="workspace-body">
+        {view === "today" && <TodayWorkspace onNavigate={navigate} />}
         {view === "chat" && <FeiAssistant module="general" />}
         {view === "items" && <HouseholdWorkspace />}
         {view === "runs" && <RunsWorkspace />}
