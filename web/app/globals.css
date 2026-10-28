@@ -1,24 +1,24 @@
 :root {
-  --bg: #0b0d10;
-  --surface: #12161c;
-  --surface-2: #171c23;
-  --surface-3: #1e2530;
-  --ink: #e9eef6;
-  --muted: #8c97a6;
-  --faint: #5f6a78;
-  --line: #222a34;
-  --line-strong: #2c3641;
-  --accent: #7c9cff;
-  --accent-strong: #6a87f2;
-  --accent-soft: #1a2236;
-  --green: #3ddc97;
-  --green-soft: #11201a;
-  --amber: #f5b94a;
-  --amber-soft: #241d10;
-  --red: #ff6b6b;
-  --red-soft: #2a1618;
-  --rail: #0c0f14;
-  --shadow: 0 18px 48px rgba(0, 0, 0, .45);
+  --bg: #f6f4ee;
+  --surface: #fffdf9;
+  --surface-2: #efece2;
+  --surface-3: #e7e3d6;
+  --ink: #2a2c26;
+  --muted: #6e7267;
+  --faint: #a0a294;
+  --line: #e5e1d4;
+  --line-strong: #d6d1c0;
+  --accent: #6f9a7c;
+  --accent-strong: #5c8570;
+  --accent-soft: #eaf2e9;
+  --green: #4f7d64;
+  --green-soft: #e8f1ea;
+  --amber: #b07a36;
+  --amber-soft: #f7eedd;
+  --red: #b25b58;
+  --red-soft: #f8e9e7;
+  --rail: #2a2c26;
+  --shadow: 0 10px 30px rgba(60, 55, 40, .08);
 }
 
 * { box-sizing: border-box; }
@@ -73,7 +73,7 @@ kbd { padding: 2px 5px; color: #9498a1; border: 1px solid #dfe1e4; border-bottom
 .context-footer small { display: block; margin: 5px 0 0 13px; color: var(--faint); font-size: 8px; }
 
 .workspace-main { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--bg); }
-.workspace-topbar { display: grid; grid-template-columns: minmax(180px,1fr) minmax(240px,420px) minmax(180px,1fr); align-items: center; height: 64px; flex: 0 0 64px; padding: 0 20px 0 24px; border-bottom: 1px solid var(--line); background: rgba(18,22,28,.86); backdrop-filter: blur(16px); }
+.workspace-topbar { display: grid; grid-template-columns: minmax(180px,1fr) minmax(240px,420px) minmax(180px,1fr); align-items: center; height: 64px; flex: 0 0 64px; padding: 0 20px 0 24px; border-bottom: 1px solid var(--line); background: rgba(255,253,249,.86); backdrop-filter: blur(16px); }
 .workspace-topbar h1 { margin: 0; font-size: 13px; letter-spacing: -.02em; }
 .workspace-topbar p { margin: 3px 0 0; color: var(--faint); font-size: 8px; }
 .command-trigger { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; width: 100%; padding: 7px 9px; color: #8b8f98; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); text-align: left; font-size: 9px; }
@@ -510,4 +510,65 @@ progress { width: 100%; height: 4px; accent-color: var(--accent); }
 
 .capability-card:hover {
   border-color: var(--accent);
+}
+
+/* warm, calm typography pass */
+.workspace-topbar h1 { font-size: 14px; }
+.workspace-topbar p { font-size: 11px; }
+.system-state { font-size: 11px; }
+.command-trigger { font-size: 12px; }
+
+.welcome h2 {
+  max-width: 620px;
+  font-size: clamp(26px, 2.6vw, 32px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.welcome-copy {
+  margin: 12px 0 26px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.capability-grid { gap: 10px; }
+
+.capability-card {
+  padding: 15px 16px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.capability-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px rgba(60, 55, 40, .06);
+}
+
+.capability-card strong { font-size: 13px; font-weight: 600; }
+.capability-card p { margin: 5px 0 0; font-size: 12px; line-height: 1.55; }
+
+.assistant-message, .user-message, .welcome-copy { font-size: 14px; line-height: 1.7; }
+
+/* soft warm-green glow so the empty chat does not feel like a void */
+.thread-viewport {
+  background:
+    radial-gradient(900px 360px at 50% -12%, rgba(111, 154, 124, .16), transparent 62%),
+    radial-gradient(700px 300px at 82% 8%, rgba(214, 190, 140, .18), transparent 70%);
+}
+
+.side-nav button.active {
+  background: var(--surface);
+  color: var(--accent-strong);
+}
+
+.send-button {
+  background: var(--accent);
+  color: #fffdf9;
+}
+
+.send-button:disabled {
+  background: var(--surface-3);
+  color: var(--faint);
 }
