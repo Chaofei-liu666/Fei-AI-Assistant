@@ -53,7 +53,7 @@
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(112, 92, 246, 0.24);
+  box-shadow: 0 6px 16px rgba(124, 156, 255, .28);
 }
 
 .primary:hover {
@@ -88,32 +88,25 @@
   font-size: 13px;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin: -4px 0 20px;
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
-.stat {
-  display: grid;
-  gap: 2px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.stat b {
-  font-size: 24px;
+.metaRow b {
+  margin-right: 4px;
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 650;
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
-.stat span {
-  color: var(--muted);
-  font-size: 12px;
+.grid.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid {
@@ -128,7 +121,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(22, 24, 29, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
 }
 
 .panelHead {
@@ -179,7 +172,7 @@
 }
 
 .row:hover {
-  background: #fafafb;
+  background: var(--surface-2);
 }
 
 .tile {
@@ -194,7 +187,7 @@
 }
 
 .tileAction {
-  border-color: #f0dcbc;
+  border-color: var(--line-strong);
   background: var(--amber-soft);
   color: var(--amber);
 }
@@ -283,8 +276,7 @@
 }
 
 @media (max-width: 1080px) {
-  .grid,
-  .stats {
+  .grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -319,7 +311,7 @@
 
 .agentCard:hover {
   border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(112, 92, 246, 0.1);
+  box-shadow: 0 8px 24px rgba(124, 156, 255, .16);
 }
 
 .agentTop {

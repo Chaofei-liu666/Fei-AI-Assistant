@@ -88,19 +88,10 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
 
     {error && <div className={styles.alert}><Icon name="alert" size={15} /> {error}</div>}
 
-    {!empty && <div className={styles.stats}>
-      <div className={styles.stat}>
-        <b>{actions.length}</b>
-        <span>待你处理</span>
-      </div>
-      <div className={styles.stat}>
-        <b>{notes.length}</b>
-        <span>最近变化</span>
-      </div>
-      <div className={styles.stat}>
-        <b>{notes.filter((item) => item.kind === "household").length}</b>
-        <span>低库存</span>
-      </div>
+    {!empty && <div className={styles.metaRow}>
+      <span><b>{actions.length}</b> 待你处理</span>
+      <span><b>{notes.length}</b> 最近变化</span>
+      <span><b>{notes.filter((item) => item.kind === "household").length}</b> 低库存</span>
     </div>}
 
     {empty && <section className={styles.empty}>
@@ -113,13 +104,12 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
       </div>
     </section>}
 
-    {!empty && <div className={styles.grid}>
-      <section className={styles.panel}>
+    {!empty && <div className={`${styles.grid} ${actions.length === 0 ? styles.single : ""}`}>
+      {actions.length > 0 && <section className={styles.panel}>
         <header className={styles.panelHead}>
           <h2>需要你处理</h2>
           <span>{actions.length}</span>
         </header>
-        {actions.length === 0 && <div className={styles.done}><Icon name="check" size={16} /> 都处理完了</div>}
         <div className={styles.rows}>
           {actions.map((item, index) => <button key={`${item.kind}-${index}`} className={styles.row} onClick={() => onNavigate(item.target)}>
             <span className={`${styles.tile} ${styles.tileAction}`}>
@@ -136,7 +126,7 @@ export function TodayWorkspace({ onNavigate }: { onNavigate: (target: string) =>
             <Icon name="chevron" size={16} />
           </button>)}
         </div>
-      </section>
+      </section>}
 
       <aside className={styles.panel}>
         <header className={styles.panelHead}>
