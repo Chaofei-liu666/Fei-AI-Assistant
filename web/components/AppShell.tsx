@@ -6,13 +6,13 @@ import { HouseholdWorkspace } from "./HouseholdWorkspace";
 import { JobWorkspace } from "./JobWorkspace";
 import { RunsWorkspace } from "./RunsWorkspace";
 import { SettingsPanel } from "./SettingsPanel";
-import { api } from "@/lib/api";
 import { threads } from "@/lib/threads";
+import { AgentsWorkspace } from "./AgentsWorkspace";
 import { ThreadList } from "./ThreadList";
 import { TodayWorkspace } from "./TodayWorkspace";
 import { Icon, type IconName } from "./Icon";
 
-type View = "today" | "chat" | "job" | "items" | "runs" | "settings";
+type View = "today" | "chat" | "agents" | "job" | "items" | "runs" | "settings";
 
 const careerNav: [string, string, IconName, string][] = [
   ["overview", "概览", "dashboard", "今天需要关注的事项"],
@@ -29,32 +29,26 @@ const careerNav: [string, string, IconName, string][] = [
 const primaryNav: [View, string, IconName][] = [
   ["chat", "主对话", "chat"],
   ["today", "今天", "dashboard"],
+  ["agents", "子 Agent", "sparkles"],
   ["runs", "运行记录", "clock"],
 ];
-
-type AgentEntry = { id: string; title: string; description: string; target: string | null; surface: string };
-
-const agentIcons: Record<string, IconName> = { job_search: "briefcase", household: "box" };
 
 export function AppShell() {
   const [view, setView] = useState<View>("chat");
   const [jobTab, setJobTab] = useState("overview");
-  const [agents, setAgents] = useState<AgentEntry[]>([]);
 
   useEffect(() => {
-    let alive = true;
-    api<AgentEntry[]>("/api/agents")
-      .then((rows) => { if (alive) setAgents(rows); })
-      .catch(() => {});
-    return () => { alive = false; };
+    const requested = new URLSearchParams(window.location.search).get("view");
+    const allowed: View[] = ["chat", "today", "agents", "runs", "items", "job", "settings"];
+    if (requested && (allowed as string[]).includes(requested)) setView(requested as View);
   }, []);
   const current = careerNav.find(([id]) => id === jobTab);
-  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
-  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "告诉 Fei 你要处理什么" : view === "items" ? "用一句话记录东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
+  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "agents" ? "子 Agent" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
+  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "告诉 Fei 你要处理什么" : view === "agents" ? "Fei 可以调用的能力" : view === "items" ? "用一句话记录东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
 
   const navigate = (target: string) => {
     const [next, tab] = target.split("/");
-    if (next === "items" || next === "runs" || next === "chat" || next === "today") { setView(next as View); return; }
+    if (next === "items" || next === "runs" || next === "chat" || next === "today" || next === "agents") { setView(next as View); return; }
     setView("job");
     if (tab) setJobTab(tab);
   };
@@ -74,18 +68,6 @@ export function AppShell() {
             <Icon name={icon} size={17} /><span>{label}</span>
             {id === "today" && <em />}
           </button>)}
-        </nav>
-        <p className="side-label">AGENTS</p>
-        <nav className="side-nav">
-          {agents.filter((agent) => agent.surface === "workspace" && agent.target).map((agent) => <button
-            key={agent.id}
-            className={view === (agent.target || "").split("/")[0] ? "active" : ""}
-            title={agent.description}
-            onClick={() => navigate(agent.target || "chat")}
-          >
-            <Icon name={agentIcons[agent.id] || "sparkles"} size={17} /><span>{agent.title}</span>
-          </button>)}
-          {agents.filter((agent) => agent.surface === "workspace" && agent.target).length === 0 && <span className="side-empty">还没有带工作区的 Agent</span>}
         </nav>
         <p className="side-label">最近</p>
         <ThreadList onOpen={() => setView("chat")} />
@@ -113,6 +95,7 @@ export function AppShell() {
       <div className="workspace-body">
         {view === "today" && <TodayWorkspace onNavigate={navigate} />}
         {view === "chat" && <FeiAssistant module="general" onNavigate={navigate} />}
+        {view === "agents" && <AgentsWorkspace onNavigate={navigate} />}
         {view === "items" && <HouseholdWorkspace />}
         {view === "runs" && <RunsWorkspace />}
         {view === "job" && (jobTab === "assistant" ? <FeiAssistant module="job_search" onNavigate={navigate} /> : <JobWorkspace tab={jobTab} onTab={setJobTab} />)}

@@ -1,0 +1,157 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.head h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.sub {
+  margin: 9px 0 0;
+  max-width: 620px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.count {
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #f0cfcd;
+  border-radius: 10px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tools {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.card h2 {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.actions {
+  margin-top: 6px;
+}
+
+.primary,
+.ghost {
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.primary {
+  border: 1px solid var(--accent);
+  background: linear-gradient(135deg, #7fae8a, #5c8570);
+  color: #fffdf9;
+}
+
+.ghost {
+  border: 1px solid var(--line2);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note p {
+  margin: 0;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 30px;
+  color: var(--faint);
+  text-align: center;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
