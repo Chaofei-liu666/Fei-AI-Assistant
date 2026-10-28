@@ -293,3 +293,17 @@ class AgentPrompt(Base, TimestampMixin):
     __tablename__ = "agent_prompts"
     agent_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     prompt: Mapped[str] = mapped_column(Text, default="")
+
+
+class Skill(Base, TimestampMixin):
+    """A capability inside one agent: description + prompt + tools."""
+
+    __tablename__ = "skills"
+    agent_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    skill_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(120), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    prompt: Mapped[str] = mapped_column(Text, default="")
+    tool_names: Mapped[list[str]] = mapped_column(JSON, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    builtin: Mapped[bool] = mapped_column(Boolean, default=True)

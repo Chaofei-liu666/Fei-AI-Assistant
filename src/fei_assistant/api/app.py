@@ -54,6 +54,7 @@ from .household import router as household_router
 from .inbox import router as inbox_router
 from .mail_events import router as mail_events_router
 from .runs import router as runs_router
+from .skills import router as skills_router
 
 
 task_manager = TaskManager()
@@ -75,6 +76,7 @@ app.include_router(agent_prompts_router)
 app.include_router(mail_events_router)
 app.include_router(inbox_router)
 app.include_router(runs_router)
+app.include_router(skills_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],

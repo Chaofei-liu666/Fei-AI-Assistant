@@ -5,12 +5,22 @@ import { api } from "@/lib/api";
 import { Icon } from "./Icon";
 import styles from "./AgentsWorkspace.module.css";
 
+type SkillRow = {
+  skill_id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  tools: string[];
+  enabled: boolean;
+  builtin: boolean;
+};
+
 type AgentRow = {
   id: string;
   title: string;
   description: string;
   page: string;
-  surface: "workspace" | "inline";
+  has_workspace: boolean;
   target: string | null;
   tools: string[];
 };
@@ -21,6 +31,11 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
   const [editing, setEditing] = useState<{ id: string; title: string; customized: boolean } | null>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [skillsFor, setSkillsFor] = useState<{ id: string; title: string } | null>(null);
+  const [skills, setSkills] = useState<SkillRow[]>([]);
+  const [openSkill, setOpenSkill] = useState<string | null>(null);
+  const [skillDraft, setSkillDraft] = useState<{ description: string; prompt: string; enabled: boolean } | null>(null);
+  const [savingSkill, setSavingSkill] = useState(false);
 
   const openPrompt = async (agent: AgentRow) => {
     try {
@@ -62,6 +77,40 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
     }
   };
 
+  const openSkills = async (agent: AgentRow) => {
+    try {
+      const rows = await api<SkillRow[]>(`/api/agents/${agent.id}/skills`);
+      setSkillsFor({ id: agent.id, title: agent.title });
+      setSkills(rows);
+      setOpenSkill(null);
+      setSkillDraft(null);
+      setEditing(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const selectSkill = (row: SkillRow) => {
+    setOpenSkill(row.skill_id);
+    setSkillDraft({ description: row.description, prompt: row.prompt, enabled: row.enabled });
+  };
+
+  const saveSkill = async () => {
+    if (!skillsFor || !openSkill || !skillDraft) return;
+    setSavingSkill(true);
+    try {
+      const updated = await api<SkillRow>(`/api/agents/${skillsFor.id}/skills/${openSkill}`, {
+        method: "PUT",
+        body: JSON.stringify(skillDraft),
+      });
+      setSkills(skills.map((row) => (row.skill_id === updated.skill_id ? updated : row)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingSkill(false);
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     api<AgentRow[]>("/api/agents")
@@ -83,7 +132,7 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
 
     <div className={styles.grid}>
       {agents.map((agent) => {
-        const workspace = agent.surface === "workspace" && agent.target;
+        const workspace = agent.has_workspace && agent.target;
         return <article key={agent.id} className={styles.card}>
           <div className={styles.cardTop}>
             <span className={styles.badge}>{workspace ? "有工作区" : "仅在对话中"}</span>
@@ -96,12 +145,44 @@ export function AgentsWorkspace({ onNavigate }: { onNavigate: (target: string) =
               ? <button className={styles.primary} onClick={() => onNavigate(agent.target as string)}>打开工作区</button>
               : <button className={styles.ghost} onClick={() => onNavigate("chat")}>在对话里调用</button>}
             <button className={styles.linkButton} onClick={() => void openPrompt(agent)}>Prompt</button>
+            <button className={styles.linkButton} onClick={() => void openSkills(agent)}>Skills</button>
           </div>
         </article>;
       })}
       {agents.length === 0 && !error && <p className={styles.empty}>还没有注册任何 Agent。</p>}
     </div>
 
+    {skillsFor && <section className={styles.editor}>
+      <div className={styles.editorHead}>
+        <h2>{skillsFor.title} · Skills</h2>
+        <button className={styles.linkButton} onClick={() => setSkillsFor(null)}>关闭</button>
+      </div>
+      <div className={styles.skillList}>
+        {skills.map((row) => <div key={row.skill_id} className={styles.skill}>
+          <button className={styles.skillHead} onClick={() => selectSkill(row)}>
+            <span>{row.title}</span>
+            <span className={styles.tools}>{row.tools.length} tools · {row.enabled ? "启用" : "停用"}</span>
+          </button>
+          {openSkill === row.skill_id && skillDraft && <div className={styles.skillBody}>
+            <label className={styles.field}>
+              <span>Description</span>
+              <input value={skillDraft.description} onChange={(event) => setSkillDraft({ ...skillDraft, description: event.target.value })} />
+            </label>
+            <label className={styles.field}>
+              <span>Prompt</span>
+              <textarea className={styles.textarea} rows={7} value={skillDraft.prompt} onChange={(event) => setSkillDraft({ ...skillDraft, prompt: event.target.value })} />
+            </label>
+            <div className={styles.actions}>
+              <button className={styles.primary} onClick={() => void saveSkill()} disabled={savingSkill}>保存</button>
+              <label className={styles.toggle}>
+                <input type="checkbox" checked={skillDraft.enabled} onChange={(event) => setSkillDraft({ ...skillDraft, enabled: event.target.checked })} /> 启用
+              </label>
+            </div>
+          </div>}
+        </div>)}
+        {skills.length === 0 && <p className={styles.empty}>这个 Agent 还没有 Skill。</p>}
+      </div>
+    </section>}
     {editing && <section className={styles.editor}>
       <div className={styles.editorHead}>
         <h2>{editing.title} · 系统提示词</h2>
