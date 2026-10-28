@@ -10,6 +10,7 @@ import { TodayWorkspace } from "./TodayWorkspace";
 import { Icon, type IconName } from "./Icon";
 
 type View = "today" | "chat" | "job" | "items" | "runs" | "settings";
+
 const careerNav: [string, string, IconName, string][] = [
   ["overview", "概览", "dashboard", "今天需要关注的事项"],
   ["profile", "候选人画像", "file", "简历事实与求职方向"],
@@ -22,12 +23,21 @@ const careerNav: [string, string, IconName, string][] = [
   ["assistant", "求职 Agent", "sparkles", "和 Specialist 协作"],
 ];
 
+const primaryNav: [View, string, IconName][] = [
+  ["chat", "主对话", "chat"],
+  ["today", "今天", "dashboard"],
+  ["job", "求职", "briefcase"],
+  ["items", "物品", "box"],
+  ["runs", "运行记录", "clock"],
+];
+
 export function AppShell() {
-  const [view, setView] = useState<View>("today");
+  const [view, setView] = useState<View>("chat");
   const [jobTab, setJobTab] = useState("overview");
   const current = careerNav.find(([id]) => id === jobTab);
-  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "Fei" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
-  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "你的本地智能工作空间" : view === "items" ? "用一句话记录家里的东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
+  const title = view === "job" ? current?.[1] : view === "today" ? "今天" : view === "chat" ? "主对话" : view === "items" ? "物品清单" : view === "runs" ? "运行记录" : "设置";
+  const subtitle = view === "job" ? current?.[3] : view === "today" ? "邮件、任务与物品的变化汇总" : view === "chat" ? "告诉 Fei 你要处理什么" : view === "items" ? "用一句话记录东西放在哪" : view === "runs" ? "每一次执行的过程与结果" : "模型、语音、邮箱与本地环境";
+
   const navigate = (target: string) => {
     const [next, tab] = target.split("/");
     if (next === "items" || next === "runs" || next === "chat" || next === "today") { setView(next as View); return; }
@@ -36,55 +46,40 @@ export function AppShell() {
   };
 
   return <div className="product-shell">
-    <aside className="app-rail">
-      <button className="rail-logo" aria-label="Fei 首页" onClick={() => setView("chat")}>F</button>
-      <div className="rail-nav">
-        <RailButton label="今天" icon="dashboard" active={view === "today"} onClick={() => setView("today")} />
-        <RailButton label="主对话" icon="chat" active={view === "chat"} onClick={() => setView("chat")} />
-        <RailButton label="求职工作台" icon="briefcase" active={view === "job"} onClick={() => setView("job")} />
-        <RailButton label="物品清单" icon="box" active={view === "items"} onClick={() => setView("items")} />
-        <RailButton label="运行记录" icon="clock" active={view === "runs"} onClick={() => setView("runs")} />
-      </div>
-      <div className="rail-bottom">
-        <RailButton label="设置" icon="settings" active={view === "settings"} onClick={() => setView("settings")} />
-        <span className="local-avatar" title="本地单用户">LC</span>
-      </div>
-    </aside>
-
     <aside className="context-sidebar">
       <div className="context-brand"><div><strong>Fei</strong><span>Intelligence workspace</span></div><span className="desktop-chip">LOCAL</span></div>
-      {view === "today" ? <>
-        <div className="context-title"><p>TODAY</p><h2>今天</h2></div>
-        <nav className="context-nav">
-          <button onClick={() => setView("chat")}><Icon name="chat" size={16} /><span>主对话</span></button>
-          <button onClick={() => setView("items")}><Icon name="box" size={16} /><span>物品清单</span></button>
-          <button onClick={() => setView("runs")}><Icon name="clock" size={16} /><span>运行记录</span></button>
-        </nav>
-      </> : view === "job" ? <>
-        <div className="context-title"><p>CAREER WORKSPACE</p><h2>求职工作台</h2></div>
-        <nav className="context-nav">{careerNav.map(([id,label,icon]) => <button key={id} className={jobTab === id ? "active" : ""} onClick={() => setJobTab(id)}><Icon name={icon} size={16} /><span>{label}</span>{id === "mail" && <i />}</button>)}</nav>
-      </> : view === "chat" ? <>
-        <div className="context-title"><p>ASSISTANT</p><h2>主对话</h2></div>
-        <button className="new-session"><Icon name="plus" size={15} /> 新对话 <kbd>Ctrl N</kbd></button>
-        <div className="context-section"><p>可用模块</p><button onClick={() => {setView("job");setJobTab("assistant");}}><span className="module-glyph"><Icon name="briefcase" size={15} /></span><div><b>求职 Agent</b><small>5 个 Specialist</small></div><Icon name="chevron" size={14} /></button></div>
-        <div className="context-section recent"><p>工作方式</p><div><span className="status-orb" /><small>LangGraph Orchestrator 在线</small></div><div><span className="status-orb amber" /><small>写入操作需要确认</small></div></div>
-      </> : view === "items" ? <>
-        <div className="context-title"><p>HOUSEHOLD</p><h2>物品清单</h2></div>
-        <button className="new-session"><Icon name="plus" size={15} /> 记一件 <kbd>Ctrl N</kbd></button>
-        <div className="context-section"><p>怎么用</p><button onClick={() => setView("chat")}><span className="module-glyph"><Icon name="sparkles" size={15} /></span><div><b>说一句话</b><small>「洗衣液放衣柜第二层」</small></div><Icon name="chevron" size={14} /></button></div>
-        <div className="context-section recent"><p>规则</p><div><span className="status-orb" /><small>解析结果需你确认后才保存</small></div><div><span className="status-orb amber" /><small>位置按路径分层，可查可回溯</small></div></div>
-      </> : view === "runs" ? <>
-        <div className="context-title"><p>RUNS</p><h2>运行记录</h2></div>
-        <div className="context-section"><p>看什么</p><div><span className="status-orb" /><small>计划、委派、工具调用与结果</small></div><div><span className="status-orb amber" /><small>失败会单独成行</small></div></div>
+
+      {view === "job" ? <>
+        <button className="side-back" onClick={() => setView("chat")}><Icon name="chevron" size={14} /> 返回对话</button>
+        <div className="context-title"><p>CAREER</p><h2>求职工作台</h2></div>
+        <nav className="context-nav">{careerNav.map(([id, label, icon]) => <button key={id} className={jobTab === id ? "active" : ""} onClick={() => setJobTab(id)}><Icon name={icon} size={16} /><span>{label}</span></button>)}</nav>
       </> : <>
-        <div className="context-title"><p>PREFERENCES</p><h2>设置</h2></div>
-        <nav className="context-nav"><button className="active"><Icon name="sparkles" size={16} /><span>模型与服务</span></button><button><Icon name="lock" size={16} /><span>隐私与凭据</span></button><button><Icon name="server" size={16} /><span>本地基础设施</span></button></nav>
+        <button className="new-session" onClick={() => setView("chat")}><Icon name="plus" size={15} /> 新对话 <kbd>Ctrl N</kbd></button>
+        <nav className="side-nav">
+          {primaryNav.map(([id, label, icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
+            <Icon name={icon} size={17} /><span>{label}</span>
+            {id === "today" && <em />}
+          </button>)}
+        </nav>
+        <div className="side-hint">
+          <p>工作方式</p>
+          <div><span className="status-orb" /><small>LangGraph Orchestrator 在线</small></div>
+          <div><span className="status-orb amber" /><small>写入操作需要你确认</small></div>
+        </div>
       </>}
+
+      <button className={`side-settings ${view === "settings" ? "active" : ""}`} onClick={() => setView("settings")}>
+        <Icon name="settings" size={17} /><span>设置</span>
+      </button>
       <div className="context-footer"><div><span className="status-orb" /><b>Local services</b></div><small>127.0.0.1 · 私有工作区</small></div>
     </aside>
 
     <main className="workspace-main">
-      <header className="workspace-topbar"><div><h1>{title}</h1><p>{subtitle}</p></div><button className="command-trigger"><Icon name="search" size={14} /><span>搜索或运行命令</span><kbd>Ctrl K</kbd></button><div className="topbar-actions"><span className="system-state"><i /> 全部服务正常</span><button aria-label="通知"><Icon name="alert" size={16} /></button></div></header>
+      <header className="workspace-topbar">
+        <div><h1>{title}</h1><p>{subtitle}</p></div>
+        <button className="command-trigger"><Icon name="search" size={14} /><span>搜索或运行命令</span><kbd>Ctrl K</kbd></button>
+        <div className="topbar-actions"><span className="system-state"><i /> 全部服务正常</span><button aria-label="通知"><Icon name="alert" size={16} /></button></div>
+      </header>
       <div className="workspace-body">
         {view === "today" && <TodayWorkspace onNavigate={navigate} />}
         {view === "chat" && <FeiAssistant module="general" />}
@@ -95,8 +90,4 @@ export function AppShell() {
       </div>
     </main>
   </div>;
-}
-
-function RailButton({ label, icon, active, onClick }: { label: string; icon: IconName; active: boolean; onClick: () => void }) {
-  return <button className={active ? "active" : ""} aria-label={label} title={label} onClick={onClick}><Icon name={icon} size={19} /></button>;
 }
